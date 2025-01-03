@@ -1,33 +1,27 @@
+/**
+ * page.tsx
+ *
+ * Demonstration of using the extended SheetTable with Zod-based validation.
+ */
+
 "use client";
 
-import React, { JSX, useState } from "react";
-import SheetTable from "../components/SheetTable";
-import { ColumnDef } from "@tanstack/react-table";
+import React, { useState } from "react";
+import { z } from "zod";
+import SheetTable, { ExtendedColumnDef } from "../components/sheet-table";
+import { rowDataZodSchema, RowData } from "../schemas/row-data-schema";
 
 /**
- * Interface representing the structure of each row in the table.
+ * Example: We can extract each column's schema from the rowDataZodSchema.shape.
+ * This way, each column has its own specialized Zod validator.
  */
-interface RowData {
-  /**
-   * Name of the material.
-   */
-  materialName: string;
-  /**
-   * Cubic feet measurement of the material.
-   */
-  cft: number;
-  /**
-   * Rate per cubic foot for the material.
-   */
-  rate: number;
-  /**
-   * Total amount for the material.
-   */
-  amount: number;
-}
+const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
+const cftSchema = rowDataZodSchema.shape.cft; // optional number >= 0
+const rateSchema = rowDataZodSchema.shape.rate; // optional number >= 0
+const amountSchema = rowDataZodSchema.shape.amount; // optional number >= 0
 
 /**
- * Initial data for the table rows.
+ * Initial data for demonstration.
  */
 const initialData: RowData[] = [
   { materialName: "Pine Wood", cft: 0.2215, rate: 560, amount: 124.04 },
@@ -35,93 +29,96 @@ const initialData: RowData[] = [
 ];
 
 /**
- * Column definitions for the table.
- * Each column corresponds to a key in the RowData interface.
+ * Extended column definitions, each with a validationSchema.
  */
-const columns: ColumnDef<RowData>[] = [
+const columns: ExtendedColumnDef<RowData>[] = [
   {
-    accessorKey: "materialName", // Links this column to the "materialName" key in RowData
-    header: "Material Name", // Column header text
+    accessorKey: "materialName",
+    header: "Material Name",
+    id: "materialName",
+    validationSchema: materialNameSchema,
   },
   {
-    accessorKey: "cft", // Links this column to the "cft" key in RowData
+    accessorKey: "cft",
     header: "CFT",
+    id: "cft",
+    validationSchema: cftSchema,
   },
   {
-    accessorKey: "rate", // Links this column to the "rate" key in RowData
+    accessorKey: "rate",
     header: "Rate",
+    id: "rate",
+    validationSchema: rateSchema,
   },
   {
-    accessorKey: "amount", // Links this column to the "amount" key in RowData
+    accessorKey: "amount",
     header: "Amount",
+    id: "amount",
+    validationSchema: amountSchema,
   },
 ];
 
 /**
- * Configuration for disabling specific columns and rows.
+ * HomePage - shows how to integrate the SheetTable with per-column Zod validation.
  */
-const disabledColumns: string[] = ["materialName"]; // Disable editing for the "materialName" column
-const disabledRows: number[] = []; // No rows are disabled in this configuration
-
-/**
- * Home page component rendering a dynamic sheet table with a submit button.
- * @returns {JSX.Element} The rendered Home page.
- */
-export default function Home(): JSX.Element {
-  /**
-   * State to manage the table data.
-   */
-  const [data, setData] = useState(initialData);
+export default function HomePage() {
+  const [data, setData] = useState<RowData[]>(initialData);
 
   /**
-   * Handles the editing of a cell in the table.
-   * Updates the specific cell with the new value.
-   * 
-   * @template K - A key of RowData.
-   * @param {number} rowIndex - Index of the row being edited.
-   * @param {K} columnId - ID of the column being edited.
-   * @param {RowData[K]} value - The new value to set in the cell.
+   * onEdit callback: updates local state if the new value is valid.
+   * (Invalid cases are already handled inside the table.)
    */
   const handleEdit = <K extends keyof RowData>(
     rowIndex: number,
     columnId: K,
     value: RowData[K]
   ) => {
-    // Create a copy of the data array to avoid mutating the state directly
-    const updatedData = [...data];
-
-    // Check the type of the current cell and parse the value if it's a number
-    updatedData[rowIndex][columnId] =
-      typeof updatedData[rowIndex][columnId] === "number"
-        ? (parseFloat(value as string) as RowData[K]) // Ensure the value is parsed as a number
-        : value; // Otherwise, directly assign the value
-
-    // Update the state with the modified data array
-    setData(updatedData);
+    // Create a copy of data
+    const newData = [...data];
+    newData[rowIndex] = {
+      ...newData[rowIndex],
+      [columnId]: value,
+    };
+    setData(newData);
   };
 
   /**
-   * Handles the submission of table data.
-   * Logs the current state of the table to the console.
+   * Validate entire table on submit (optional).
+   * This ensures *all* rows meet the overall schema.
    */
   const handleSubmit = () => {
-    console.log("Table Data Submitted:", data);
+    const arraySchema = z.array(rowDataZodSchema);
+    const result = arraySchema.safeParse(data);
+
+    if (!result.success) {
+      console.error("Table data is invalid:", result.error.issues);
+    } else {
+      console.log("Table data is valid! Submitting:", data);
+    }
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Dynamic Sheet Table</h1>
+    <div style={{ padding: "1rem" }}>
+      <h1 style={{ marginBottom: "1rem" }}>Home Page with Zod Validation</h1>
+
       <SheetTable<RowData>
-        columns={columns} // Pass the column definitions
-        data={data} // Pass the table data
-        onEdit={handleEdit} // Pass the cell edit handler
-        disabledColumns={disabledColumns} // Disable specific columns
-        disabledRows={disabledRows} // Disable specific rows
+        columns={columns}
+        data={data}
+        onEdit={handleEdit}
+        disabledColumns={[]} // e.g., ["materialName"]
+        disabledRows={[]} // e.g., [1]
       />
-      {/* Submit Button */}
+
       <button
+        style={{
+          marginTop: "1rem",
+          padding: "0.5rem 1rem",
+          backgroundColor: "#007bff",
+          color: "#fff",
+          border: "none",
+          borderRadius: "4px",
+        }}
         onClick={handleSubmit}
-        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
       >
         Submit
       </button>
