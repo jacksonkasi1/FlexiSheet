@@ -9,7 +9,9 @@
 import React, { useState } from "react";
 import { z } from "zod";
 
-import SheetTable, { ExtendedColumnDef } from "@/components/sheet-table";
+import SheetTable from "@/components/sheet-table";
+import { ExtendedColumnDef } from "@/components/sheet-table/utils";
+
 import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
 
 const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
