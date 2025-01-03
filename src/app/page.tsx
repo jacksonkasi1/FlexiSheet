@@ -16,6 +16,7 @@ const initialData: RowData[] = [
   { materialName: "Rubber Wood", cft: 0.33917, rate: 1200, amount: 406.08 },
 ];
 
+// Column definitions
 const columns: ColumnDef<RowData>[] = [
   {
     accessorKey: "materialName",
@@ -35,10 +36,12 @@ const columns: ColumnDef<RowData>[] = [
   },
 ];
 
+// Disable configuration
+const disabledColumns: string[] = ["materialName"]; // Disable the "rate" column
+const disabledRows: number[] = []; // Disable the second row (index 1)
+
 export default function Home() {
   const [data, setData] = useState(initialData);
-
-
 
   const handleEdit = <K extends keyof RowData>(
     rowIndex: number,
@@ -46,19 +49,23 @@ export default function Home() {
     value: RowData[K],
   ) => {
     const updatedData = [...data];
-
     updatedData[rowIndex][columnId] =
       typeof updatedData[rowIndex][columnId] === "number"
         ? (parseFloat(value as string) as RowData[K])
         : value;
-
     setData(updatedData);
   };
 
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Dynamic Sheet Table</h1>
-      <SheetTable<RowData> columns={columns} data={data} onEdit={handleEdit} />
+      <SheetTable<RowData>
+        columns={columns}
+        data={data}
+        onEdit={handleEdit}
+        disabledColumns={disabledColumns}
+        disabledRows={disabledRows}
+      />
     </div>
   );
 }
