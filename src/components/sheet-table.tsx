@@ -9,31 +9,37 @@
 import React, { useState, useCallback } from "react";
 import {
   useReactTable,
-  ColumnDef,
   getCoreRowModel,
   flexRender,
+  // Types from TanStack Table v8
+  ColumnDef,
+  TableOptions,
 } from "@tanstack/react-table";
-import type { ZodType } from "zod";
+import type { ZodType, ZodTypeDef } from "zod";
 
 /**
- * Extended ColumnDef to include an optional validation schema for each column.
+ * ExtendedColumnDef<TData, TValue>:
+ * - Inherits everything from TanStack's ColumnDef<TData, TValue>
+ * - Forces existence of optional `accessorKey?: string` and `id?: string` 
+ *   in case your TanStack version doesn't define them.
+ * - Adds our optional `validationSchema` property.
  */
-export interface ExtendedColumnDef<T> extends ColumnDef<T, any> {
-  /**
-   * Optional Zod validation schema for this column.
-   * If provided, the SheetTable will validate cell edits in real-time.
-   */
-  validationSchema?: ZodType<any>;
-}
+export type ExtendedColumnDef<
+  TData extends object,
+  TValue = unknown
+> = Omit<ColumnDef<TData, TValue>, "id" | "accessorKey"> & {
+  id?: string;
+  accessorKey?: string;
+  validationSchema?: ZodType<any, ZodTypeDef, any>;
+};
 
 /**
  * Props for the SheetTable component.
  * @template T - The type of data used in the table.
  */
-interface SheetTableProps<T> {
+interface SheetTableProps<T extends object> {
   /**
-   * Array of column definitions for the table.
-   * Optionally includes a Zod schema (validationSchema) per column.
+   * Extended columns that can include a validation schema.
    */
   columns: ExtendedColumnDef<T>[];
 
@@ -43,10 +49,7 @@ interface SheetTableProps<T> {
   data: T[];
 
   /**
-   * Callback function triggered when a cell is edited (onBlur).
-   * @param rowIndex - The index of the row being edited.
-   * @param columnId - The column ID of the cell being edited.
-   * @param value - The new value entered in the cell.
+   * Callback function triggered when a cell is edited (and passes validation).
    */
   onEdit?: <K extends keyof T>(rowIndex: number, columnId: K, value: T[K]) => void;
 
@@ -64,11 +67,10 @@ interface SheetTableProps<T> {
 /**
  * A reusable table component with:
  *  - Editable cells
- *  - Optional per-column Zod validation
+ *  - Optional per-column Zod validation (real-time + onBlur)
  *  - Row/column disabling
  * 
  * @template T - The type of data used in the table.
- * @param {SheetTableProps<T>} props - The props for the SheetTable component.
  */
 function SheetTable<T extends object>({
   columns,
@@ -77,37 +79,135 @@ function SheetTable<T extends object>({
   disabledColumns = [],
   disabledRows = [],
 }: SheetTableProps<T>) {
-  // Local state to track cell-specific errors:
-  // Keyed by rowIndex -> columnId, storing an error message or null.
+  /**
+   * Local state to track cell-specific errors:
+   * Keyed by rowIndex -> colKey (id/accessorKey).
+   */
   const [cellErrors, setCellErrors] = useState<{
-    [rowIndex: number]: { [colId: string]: string | null };
+    [rowIndex: number]: { [colKey: string]: string | null };
   }>({});
 
-  // Create the table instance using TanStack Table
-  const table = useReactTable({
+  /**
+   * Because ExtendedColumnDef<T> extends ColumnDef<T>,
+   * the table can accept it directly with no casting needed.
+   */
+  const table = useReactTable<T>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-  });
+  } as TableOptions<T>); 
+  // ^ The 'as TableOptions<T>' is a small workaround if TS complains.
+  //   Some TS versions won't need this, depending on your config.
 
   /**
-   * Restrict certain keystrokes if the column's schema is numeric.
-   * This is a naive approach checking the schema's _def typeName,
-   * but in real scenarios, you might do a more robust check or
-   * parse the schema differently (e.g. check if it's a ZodNumber).
+   * Helper to figure out a stable "column key" to store errors / check disabled.
+   * We try: column.id -> column.accessorKey -> cell.column.id as fallback
+   */
+  const getColumnKey = (colDef: ExtendedColumnDef<T>) => {
+    return colDef.id ?? colDef.accessorKey ?? "";
+  };
+
+  /**
+   * Validate the given 'rawValue' for the specified column's Zod schema,
+   * possibly converting strings to numbers if the schema is numeric.
+   *
+   * Returns an object: { parsedValue, errorMessage }
+   */
+  const validateCellValue = (
+    rawValue: string,
+    colDef: ExtendedColumnDef<T>
+  ): { parsedValue: unknown; errorMessage: string | null } => {
+    let parsedValue: unknown = rawValue;
+    let errorMessage: string | null = null;
+
+    const schema = colDef.validationSchema;
+    if (!schema) {
+      // No validation schema -> no error, just pass raw value
+      return { parsedValue, errorMessage };
+    }
+
+    // 1) If it's a numeric schema, parse float
+    const schemaType = (schema as any)?._def?.typeName;
+    if (schemaType === "ZodNumber") {
+      // If user cleared the cell and it's optional, allow undefined
+      if (rawValue.trim() === "") {
+        parsedValue = undefined;
+      } else {
+        const maybeNum = parseFloat(rawValue);
+        parsedValue = isNaN(maybeNum) ? rawValue : maybeNum;
+      }
+    }
+
+    // 2) Run the schema
+    const result = schema.safeParse(parsedValue);
+    if (!result.success) {
+      // Use first error message
+      errorMessage = result.error.issues[0].message;
+    }
+
+    return { parsedValue, errorMessage };
+  };
+
+  /**
+   * Update or clear cell error in local state for a specific [rowIndex, colKey].
+   */
+  const setCellError = (
+    rowIndex: number,
+    colKey: string,
+    errorMessage: string | null
+  ) => {
+    setCellErrors((prev) => {
+      const rowErrors = { ...(prev[rowIndex] || {}) };
+      rowErrors[colKey] = errorMessage;
+      return { ...prev, [rowIndex]: rowErrors };
+    });
+  };
+
+  /**
+   * Common logic to handle input changes (real-time) or blur event
+   * so we can show immediate validation feedback + logs.
+   */
+  const handleCellChange = (
+    e: React.FormEvent<HTMLTableCellElement> | React.FocusEvent<HTMLTableCellElement>,
+    rowIndex: number,
+    colDef: ExtendedColumnDef<T>
+  ) => {
+    if (disabledRows.includes(rowIndex)) return;
+    const colKey = getColumnKey(colDef);
+    if (disabledColumns.includes(colKey)) return;
+
+    const rawValue = e.currentTarget.textContent ?? "";
+    const { parsedValue, errorMessage } = validateCellValue(rawValue, colDef);
+
+    // 1) Update cell error highlight
+    setCellError(rowIndex, colKey, errorMessage);
+
+    // 2) Log errors in real-time if you want:
+    if (errorMessage) {
+      console.error(
+        `Row ${rowIndex}, Column "${colKey}" error: ${errorMessage}`
+      );
+    } else {
+      console.log(`Row ${rowIndex}, Column "${colKey}" is valid:`, parsedValue);
+    }
+
+    // 3) If valid, call onEdit to update state in parent
+    if (!errorMessage && onEdit) {
+      // We must cast colKey to keyof T so TS is happy
+      onEdit(rowIndex, colKey as keyof T, parsedValue as T[keyof T]);
+    }
+  };
+
+  /**
+   * Restrict certain keystrokes if the column's schema is numeric (real-time).
    */
   const handleKeyDown = useCallback(
-    (
-      e: React.KeyboardEvent<HTMLTableCellElement>,
-      colDef: ExtendedColumnDef<T>
-    ) => {
-      // If no validationSchema, do nothing
+    (e: React.KeyboardEvent<HTMLTableCellElement>, colDef: ExtendedColumnDef<T>) => {
       if (!colDef.validationSchema) return;
 
       const schemaType = (colDef.validationSchema as any)?._def?.typeName;
       if (schemaType === "ZodNumber") {
         // Allowed keys: digits, decimal, minus, backspace, arrow keys, etc.
-        // This is just an example; customize as needed.
         const allowedKeys = [
           "Backspace",
           "Delete",
@@ -117,13 +217,11 @@ function SheetTable<T extends object>({
           "Home",
           "End",
           ".", // decimal
+          "-", // minus (if you allow negative)
         ];
-        // If Shift is pressed with a digit => not allowed
-        // If a normal character that is not a digit => block
-        // Exception: minus sign if it is the first char, etc.
-
         const isDigit = /^[0-9]$/.test(e.key);
 
+        // Example check (customize as needed)
         if (!allowedKeys.includes(e.key) && !isDigit) {
           e.preventDefault();
         }
@@ -132,63 +230,8 @@ function SheetTable<T extends object>({
     []
   );
 
-  /**
-   * Handles editing of a cell upon blur event.
-   * @param {number} rowIndex - The index of the row being edited.
-   * @param {ExtendedColumnDef<T>} colDef - Column definition (including optional validation).
-   * @param {any} value - The new value entered in the cell.
-   */
-  const handleCellEdit = (
-    rowIndex: number,
-    colDef: ExtendedColumnDef<T>,
-    value: any
-  ) => {
-    // If the row or column is disabled, do nothing.
-    if (disabledRows.includes(rowIndex) || disabledColumns.includes(colDef.id!)) {
-      return;
-    }
-
-    // Attempt to parse numeric columns into a float
-    // if the existing column schema is a ZodNumber.
-    if (colDef.validationSchema) {
-      const schemaType = (colDef.validationSchema as any)?._def?.typeName;
-      if (schemaType === "ZodNumber") {
-        // If user cleared the cell and it's optional, allow undefined
-        if (value.trim() === "") {
-          value = undefined;
-        } else {
-          const parsed = parseFloat(value);
-          value = isNaN(parsed) ? value : parsed;
-        }
-      }
-    }
-
-    // Validate using the column's schema if it exists
-    let errorMessage: string | null = null;
-    if (colDef.validationSchema) {
-      const result = colDef.validationSchema.safeParse(value);
-      if (!result.success) {
-        // Take the first error message
-        errorMessage = result.error.issues[0].message;
-      }
-    }
-
-    // Update local cellErrors state
-    setCellErrors((prev) => {
-      const rowErrors = { ...(prev[rowIndex] || {}) };
-      rowErrors[colDef.id!] = errorMessage;
-      return { ...prev, [rowIndex]: rowErrors };
-    });
-
-    // If we have no error, proceed to call onEdit
-    if (!errorMessage && onEdit) {
-      onEdit(rowIndex, colDef.id as keyof T, value);
-    }
-  };
-
   return (
     <div className="p-4">
-      {/* Render the table */}
       <table className="table-auto w-full border-collapse border border-gray-200">
         <thead className="bg-gray-100">
           {table.getHeaderGroups().map((headerGroup) => (
@@ -208,14 +251,18 @@ function SheetTable<T extends object>({
           {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
-              className={`${disabledRows.includes(row.index) ? "bg-gray-300" : ""}`}
+              className={disabledRows.includes(row.index) ? "bg-gray-300" : ""}
             >
               {row.getVisibleCells().map((cell) => {
                 const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
+                const colKey = getColumnKey(colDef);
+
+                // If row or column is disabled, content is not editable
                 const isDisabled =
-                  disabledRows.includes(row.index) || disabledColumns.includes(colDef.id!);
-                // Is there an error for this cell?
-                const hasError = cellErrors[row.index]?.[colDef.id!] ?? null;
+                  disabledRows.includes(row.index) || disabledColumns.includes(colKey);
+
+                // Check if there's an error for this cell
+                const hasError = cellErrors[row.index]?.[colKey] ?? null;
 
                 return (
                   <td
@@ -226,10 +273,11 @@ function SheetTable<T extends object>({
                     `}
                     contentEditable={!isDisabled}
                     suppressContentEditableWarning
-                    // Restrict certain key strokes for numeric columns
                     onKeyDown={(e) => handleKeyDown(e, colDef)}
-                    // Validate on blur
-                    onBlur={(e) => handleCellEdit(row.index, colDef, e.currentTarget.textContent || "")}
+                    // Validate in real-time on each keystroke or paste
+                    onInput={(e) => handleCellChange(e, row.index, colDef)}
+                    // Final check on blur
+                    onBlur={(e) => handleCellChange(e, row.index, colDef)}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>

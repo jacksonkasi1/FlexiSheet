@@ -8,17 +8,14 @@
 
 import React, { useState } from "react";
 import { z } from "zod";
-import SheetTable, { ExtendedColumnDef } from "../components/sheet-table";
-import { rowDataZodSchema, RowData } from "../schemas/row-data-schema";
 
-/**
- * Example: We can extract each column's schema from the rowDataZodSchema.shape.
- * This way, each column has its own specialized Zod validator.
- */
+import SheetTable, { ExtendedColumnDef } from "@/components/sheet-table";
+import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
+
 const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
-const cftSchema = rowDataZodSchema.shape.cft; // optional number >= 0
-const rateSchema = rowDataZodSchema.shape.rate; // optional number >= 0
-const amountSchema = rowDataZodSchema.shape.amount; // optional number >= 0
+const cftSchema = rowDataZodSchema.shape.cft;                   // optional number >= 0
+const rateSchema = rowDataZodSchema.shape.rate;                 // required number >= 0
+const amountSchema = rowDataZodSchema.shape.amount;             // required number >= 0
 
 /**
  * Initial data for demonstration.
@@ -30,30 +27,28 @@ const initialData: RowData[] = [
 
 /**
  * Extended column definitions, each with a validationSchema.
+ * We rely on 'accessorKey' instead of 'id'. This is fine now 
+ * because we manually allowed 'accessorKey?: string'.
  */
 const columns: ExtendedColumnDef<RowData>[] = [
   {
     accessorKey: "materialName",
     header: "Material Name",
-    id: "materialName",
     validationSchema: materialNameSchema,
   },
   {
     accessorKey: "cft",
     header: "CFT",
-    id: "cft",
     validationSchema: cftSchema,
   },
   {
     accessorKey: "rate",
     header: "Rate",
-    id: "rate",
     validationSchema: rateSchema,
   },
   {
     accessorKey: "amount",
     header: "Amount",
-    id: "amount",
     validationSchema: amountSchema,
   },
 ];
@@ -66,7 +61,6 @@ export default function HomePage() {
 
   /**
    * onEdit callback: updates local state if the new value is valid.
-   * (Invalid cases are already handled inside the table.)
    */
   const handleEdit = <K extends keyof RowData>(
     rowIndex: number,
@@ -80,11 +74,13 @@ export default function HomePage() {
       [columnId]: value,
     };
     setData(newData);
+
+    console.log(`State updated [row=${rowIndex}, col=${String(columnId)}]:`, value);
   };
 
   /**
-   * Validate entire table on submit (optional).
-   * This ensures *all* rows meet the overall schema.
+   * Validate entire table on submit.
+   * If any row fails, we log the errors. Otherwise, we log the data.
    */
   const handleSubmit = () => {
     const arraySchema = z.array(rowDataZodSchema);
@@ -105,8 +101,8 @@ export default function HomePage() {
         columns={columns}
         data={data}
         onEdit={handleEdit}
-        disabledColumns={[]} // e.g., ["materialName"]
-        disabledRows={[]} // e.g., [1]
+        disabledColumns={["materialName"]} // e.g. ["materialName"]
+        disabledRows={[]}    // e.g. [1]
       />
 
       <button
