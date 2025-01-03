@@ -21,6 +21,16 @@ import {
 } from "@tanstack/react-table";
 
 import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+import {
   ExtendedColumnDef,
   SheetTableProps,
   parseAndValidate,
@@ -49,10 +59,9 @@ function SheetTable<T extends object>({
    * We track errors by row/column, but NOT the content of each cell.
    * The DOM itself (contentEditable) holds the user-typed text until blur.
    */
-  const [cellErrors, setCellErrors] = useState<Record<
-    number,
-    Record<string, string | null>
-  >>({});
+  const [cellErrors, setCellErrors] = useState<
+    Record<number, Record<string, string | null>>
+  >({});
 
   /**
    * Initialize the table using TanStack Table
@@ -72,7 +81,7 @@ function SheetTable<T extends object>({
     (
       e: React.FormEvent<HTMLTableCellElement>,
       rowIndex: number,
-      colDef: ExtendedColumnDef<T>
+      colDef: ExtendedColumnDef<T>,
     ) => {
       const colKey = getColumnKey(colDef);
       if (disabledRows.includes(rowIndex) || disabledColumns.includes(colKey)) {
@@ -83,15 +92,19 @@ function SheetTable<T extends object>({
       const { errorMessage } = parseAndValidate(rawValue, colDef);
 
       // Update state to reflect error
-      setCellErrors((prev) => setCellError(prev, rowIndex, colKey, errorMessage));
+      setCellErrors((prev) =>
+        setCellError(prev, rowIndex, colKey, errorMessage),
+      );
 
       if (errorMessage) {
-        console.error(`Row ${rowIndex}, Column "${colKey}" error: ${errorMessage}`);
+        console.error(
+          `Row ${rowIndex}, Column "${colKey}" error: ${errorMessage}`,
+        );
       } else {
         console.log(`Row ${rowIndex}, Column "${colKey}" is valid (typing)...`);
       }
     },
-    [disabledColumns, disabledRows]
+    [disabledColumns, disabledRows],
   );
 
   /**
@@ -103,7 +116,7 @@ function SheetTable<T extends object>({
     (
       e: React.FocusEvent<HTMLTableCellElement>,
       rowIndex: number,
-      colDef: ExtendedColumnDef<T>
+      colDef: ExtendedColumnDef<T>,
     ) => {
       const colKey = getColumnKey(colDef);
       if (disabledRows.includes(rowIndex) || disabledColumns.includes(colKey)) {
@@ -114,16 +127,18 @@ function SheetTable<T extends object>({
       const { parsedValue, errorMessage } = parseAndValidate(rawValue, colDef);
 
       // Update state to reflect error
-      setCellErrors((prev) => setCellError(prev, rowIndex, colKey, errorMessage));
+      setCellErrors((prev) =>
+        setCellError(prev, rowIndex, colKey, errorMessage),
+      );
 
       if (errorMessage) {
         console.error(
-          `Row ${rowIndex}, Column "${colKey}" final error: ${errorMessage}`
+          `Row ${rowIndex}, Column "${colKey}" final error: ${errorMessage}`,
         );
       } else {
         console.log(
           `Row ${rowIndex}, Column "${colKey}" final valid:`,
-          parsedValue
+          parsedValue,
         );
         // If no error, update parent state
         if (onEdit) {
@@ -131,31 +146,34 @@ function SheetTable<T extends object>({
         }
       }
     },
-    [disabledColumns, disabledRows, onEdit]
+    [disabledColumns, disabledRows, onEdit],
   );
 
   return (
     <div className="p-4">
-      <table className="table-auto w-full border-collapse border border-gray-200">
-        <thead className="bg-gray-100">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  className="border border-gray-300 px-4 py-2 text-left"
-                >
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
+      {/* Shadcn UI Table */}
+      <Table>
+        {/* Optional caption. Remove or modify if you don't need it. */}
+        <TableCaption>Dynamic, editable data table.</TableCaption>
+
+        <TableHeader>
+          <TableRow>
+            {table.getFlatHeaders().map((header) => (
+              <TableHead key={header.id} className={` text-left border`}>
+                {flexRender(
+                  header.column.columnDef.header,
+                  header.getContext(),
+                )}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
           {table.getRowModel().rows.map((row) => (
-            <tr
+            <TableRow
               key={row.id}
-              className={disabledRows.includes(row.index) ? "bg-gray-300" : ""}
+              className={disabledRows.includes(row.index) ? "bg-gray-300 " : ""}
             >
               {row.getVisibleCells().map((cell) => {
                 const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
@@ -163,16 +181,17 @@ function SheetTable<T extends object>({
 
                 // Determine if cell is disabled
                 const isDisabled =
-                  disabledRows.includes(row.index) || disabledColumns.includes(colKey);
+                  disabledRows.includes(row.index) ||
+                  disabledColumns.includes(colKey);
 
                 // Check for error
                 const errorMsg = cellErrors[row.index]?.[colKey] || null;
 
                 return (
-                  <td
+                  <TableCell
                     key={cell.id}
-                    className={`border border-gray-300 px-4 py-2
-                      ${isDisabled ? "bg-gray-200" : ""}
+                    className={`border  
+                      ${isDisabled ? "bg-gray-100" : ""}
                       ${errorMsg ? "bg-red-200" : ""}
                     `}
                     // Make editable only if not disabled
@@ -187,13 +206,13 @@ function SheetTable<T extends object>({
                     onBlur={(e) => handleCellBlur(e, row.index, colDef)}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
+                  </TableCell>
                 );
               })}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
