@@ -43,7 +43,7 @@ export interface SheetTableProps<T extends object> {
   data: T[];
   onEdit?: <K extends keyof T>(rowIndex: number, columnId: K, value: T[K]) => void;
   disabledColumns?: string[];
-  disabledRows?: number[];
+  disabledRows?: number[] |  Record<string, number[]>;
   showHeader?: boolean;
   showSecondHeader?: boolean;
   secondHeaderTitle?: string;
