@@ -52,6 +52,8 @@ function SheetTable<T extends { headerKey?: string }>({
   disabledColumns = [],
   disabledRows = [],
   showHeader = true,
+  showSecondHeader = false, // Controls visibility of the second header
+  secondHeaderTitle = "", // Text for the second header
 }: SheetTableProps<T>) {
   /**
    * We track errors by row/column, but NOT the content of each cell.
@@ -179,7 +181,17 @@ function SheetTable<T extends { headerKey?: string }>({
                 </TableHead>
               ))}
             </TableRow>
+
           </TableHeader>
+        )}
+
+        {/* Conditional rendering of the second header */}
+        {showSecondHeader && secondHeaderTitle && (
+          <TableRow>
+            <TableHead colSpan={columns.length} className="text-center border">
+              {secondHeaderTitle}
+            </TableHead>
+          </TableRow>
         )}
 
         <TableBody>

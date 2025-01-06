@@ -75,7 +75,7 @@ export default function HomePage() {
   ) => {
     // Create a copy of data
     const newData = [...data];
-    newData[rowIndex] = { ...newData[rowIndex], [columnId]: value};
+    newData[rowIndex] = { ...newData[rowIndex], [columnId]: value };
     setData(newData);
 
     console.log(`State updated [row=${rowIndex}, col=${String(columnId)}]:`, value);
@@ -106,7 +106,10 @@ export default function HomePage() {
         onEdit={handleEdit}
         disabledColumns={["materialName"]} // e.g. ["materialName"]
         disabledRows={[3]} // e.g. [1]. TODO: Group specific disabled rows
-        showHeader={true} // e.g. true or false
+        showHeader={true} // First header visibility
+        showSecondHeader={true} // Second header visibility
+        secondHeaderTitle="Custom Title Example" // Title for the second header
+
       />
 
       <button

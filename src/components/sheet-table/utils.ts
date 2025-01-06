@@ -45,6 +45,8 @@ export interface SheetTableProps<T extends object> {
   disabledColumns?: string[];
   disabledRows?: number[];
   showHeader?: boolean;
+  showSecondHeader?: boolean;
+  secondHeaderTitle?: string;
 }
 
 /**
