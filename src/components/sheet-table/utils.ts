@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,  @typescript-eslint/no-unused-vars */
 
 /**
- * compoennts/sheet-table/utils.ts
+ * components/sheet-table/utils.ts
  *
  * Utility functions, types, and helpers used by the SheetTable component.
  * 
