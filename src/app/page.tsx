@@ -15,25 +15,54 @@ import { ExtendedColumnDef } from "@/components/sheet-table/utils";
 import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
 
 const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
-const cftSchema = rowDataZodSchema.shape.cft;                   // optional number >= 0
-const rateSchema = rowDataZodSchema.shape.rate;                 // required number >= 0
-const amountSchema = rowDataZodSchema.shape.amount;             // required number >= 0
+const cftSchema = rowDataZodSchema.shape.cft; // optional number >= 0
+const rateSchema = rowDataZodSchema.shape.rate; // required number >= 0
+const amountSchema = rowDataZodSchema.shape.amount; // required number >= 0
 
 /**
  * Initial data for demonstration.
  */
 const initialData: RowData[] = [
-  { headerKey: "Dipping - 2 times", materialName: "Ultra Nitro Sealer", cft: 0.03, rate: 164, amount: 5.17 },
-  { headerKey: "Dipping - 2 times", materialName: "NC Thinner (Spl)", cft: 0.202, rate: 93, amount: 19.73 },
-  { headerKey: "Spraying", materialName: "Ultra Nitro Sealer 2", cft: 0.072, rate: 164, amount: 12.4 },
-  { headerKey: "Spraying", materialName: "Ultra Nitro Matt 2", cft: 0.051, rate: 209, amount: 11.19 },
-  { headerKey: "Spraying", materialName: "Ultra Nitro Glossy 2", cft: 0.045, rate: 215, amount: 9.68 },
+  {
+    headerKey: "Dipping - 2 times",
+    materialName: "Ultra Nitro Sealer",
+    cft: 0.03,
+    rate: 164,
+    amount: 5.17,
+  },
+  {
+    headerKey: "Dipping - 2 times",
+    materialName: "NC Thinner (Spl)",
+    cft: 0.202,
+    rate: 93,
+    amount: 19.73,
+  },
+  {
+    headerKey: "Spraying",
+    materialName: "Ultra Nitro Sealer 2",
+    cft: 0.072,
+    rate: 164,
+    amount: 12.4,
+  },
+  {
+    headerKey: "Spraying",
+    materialName: "Ultra Nitro Matt 2",
+    cft: 0.051,
+    rate: 209,
+    amount: 11.19,
+  },
+  {
+    headerKey: "Spraying",
+    materialName: "Ultra Nitro Glossy 2",
+    cft: 0.045,
+    rate: 215,
+    amount: 9.68,
+  },
 ];
-
 
 /**
  * Extended column definitions, each with a validationSchema.
- * We rely on 'accessorKey' instead of 'id'. This is fine now 
+ * We rely on 'accessorKey' instead of 'id'. This is fine now
  * because we manually allowed 'accessorKey?: string'.
  */
 const columns: ExtendedColumnDef<RowData>[] = [
@@ -71,14 +100,17 @@ export default function HomePage() {
   const handleEdit = <K extends keyof RowData>(
     rowIndex: number,
     columnId: K,
-    value: RowData[K]
+    value: RowData[K],
   ) => {
     // Create a copy of data
     const newData = [...data];
     newData[rowIndex] = { ...newData[rowIndex], [columnId]: value };
     setData(newData);
 
-    console.log(`State updated [row=${rowIndex}, col=${String(columnId)}]:`, value);
+    console.log(
+      `State updated [row=${rowIndex}, col=${String(columnId)}]:`,
+      value,
+    );
   };
 
   /**
@@ -105,11 +137,13 @@ export default function HomePage() {
         data={data}
         onEdit={handleEdit}
         disabledColumns={["materialName"]} // e.g. ["materialName"]
-        disabledRows={[3]} // e.g. [1]. TODO: Group specific disabled rows
+        disabledRows={{ // optional: disable specific rows
+          "Dipping - 2 times": [0], // Disable the second row in this group
+          Spraying: [1], // Disable the first row in this group
+        }}
         showHeader={true} // First header visibility
         showSecondHeader={true} // Second header visibility
         secondHeaderTitle="Custom Title Example" // Title for the second header
-
       />
 
       <button
