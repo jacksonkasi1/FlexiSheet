@@ -256,7 +256,17 @@ function SheetTable<
                         `}
                         contentEditable={!isDisabled}
                         suppressContentEditableWarning
-                        onKeyDown={(e) => handleKeyDown(e, colDef)}
+                         // Allow Ctrl/Cmd + A, C, X, V without blocking:
+                        onKeyDown={(e) => {
+                          if (
+                            (e.ctrlKey || e.metaKey) &&
+                            ["a", "c", "x", "v"].includes(e.key.toLowerCase())
+                          ) {
+                            // Let the user perform the select, copy, cut, or paste
+                            return;
+                          }
+                          handleKeyDown(e, colDef);
+                        }}
                         onPaste={(e) => handlePaste(e, colDef)}
                         onInput={(e) => handleCellInput(e, groupKey, rowIndex, colDef)}
                         onBlur={(e) => handleCellBlur(e, groupKey, rowIndex, colDef)}

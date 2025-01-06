@@ -1,5 +1,5 @@
 /**
- * page.tsx
+ * normal/page.tsx
  *
  * Demonstration of using the extended SheetTable with Zod-based validation.
  */
