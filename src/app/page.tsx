@@ -23,9 +23,13 @@ const amountSchema = rowDataZodSchema.shape.amount;             // required numb
  * Initial data for demonstration.
  */
 const initialData: RowData[] = [
-  { materialName: "Pine Wood", cft: 0.2215, rate: 560, amount: 124.04 },
-  { materialName: "Rubber Wood", cft: 0.33917, rate: 1200, amount: 406.08 },
+  { headerKey: "Dipping - 2 times", materialName: "Ultra Nitro Sealer", cft: 0.03, rate: 164, amount: 5.17 },
+  { headerKey: "Dipping - 2 times", materialName: "NC Thinner (Spl)", cft: 0.202, rate: 93, amount: 19.73 },
+  { headerKey: "Spraying", materialName: "Ultra Nitro Sealer 2", cft: 0.072, rate: 164, amount: 12.4 },
+  { headerKey: "Spraying", materialName: "Ultra Nitro Matt 2", cft: 0.051, rate: 209, amount: 11.19 },
+  { headerKey: "Spraying", materialName: "Ultra Nitro Glossy 2", cft: 0.045, rate: 215, amount: 9.68 },
 ];
+
 
 /**
  * Extended column definitions, each with a validationSchema.
@@ -104,7 +108,8 @@ export default function HomePage() {
         data={data}
         onEdit={handleEdit}
         disabledColumns={["materialName"]} // e.g. ["materialName"]
-        disabledRows={[1]}    // e.g. [1]
+        disabledRows={[3]} // e.g. [1]. TODO: Group specific disabled rows
+        showHeader={true} // e.g. true or false
       />
 
       <button

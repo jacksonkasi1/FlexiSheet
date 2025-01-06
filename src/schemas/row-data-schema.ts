@@ -10,6 +10,7 @@ import { z } from "zod";
  * Zod schema for row data validation.
  */
 export const rowDataZodSchema = z.object({
+  headerKey: z.string().optional(), // NOTE: Key to define grouping (optional).
   materialName: z.string().min(1, "Material name cannot be empty."),
   cft: z.number().min(0, "CFT cannot be negative."),
   // .optional(), // BUG: Optional fields are not validated properly as number.
