@@ -11,7 +11,7 @@
  * - setCellError function
  * - getColumnKey function
  * - handleKeyDown, handlePaste
- * 
+ *
  * This is purely for organization: the code is identical in functionality
  * to what was previously in sheet-table.tsx (just split out).
  */
@@ -155,4 +155,22 @@ export function handlePaste<T extends object>(
       e.preventDefault();
     }
   }
+}
+
+
+/**
+ * Helper function to determine if a row is disabled based on the provided
+ * disabledRows prop. This prop can be either a simple array of row indices
+ * or a record keyed by groupKey mapped to arrays of row indices.
+ */
+export function isRowDisabled(
+  rows: number[] | Record<string, number[]> | undefined,
+  groupKey: string,
+  rowIndex: number
+): boolean {
+  if (!rows) return false;
+  if (Array.isArray(rows)) {
+    return rows.includes(rowIndex);
+  }
+  return rows[groupKey]?.includes(rowIndex) ?? false;
 }
