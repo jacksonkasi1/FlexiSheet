@@ -159,7 +159,7 @@ function SheetTable<T extends object>({
         <TableHeader>
           <TableRow>
             {table.getFlatHeaders().map((header) => (
-              <TableHead key={header.id} className={` text-left border`}>
+              <TableHead key={header.id} className="text-left border">
                 {flexRender(
                   header.column.columnDef.header,
                   header.getContext(),
@@ -173,7 +173,7 @@ function SheetTable<T extends object>({
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className={disabledRows.includes(row.index) ? "bg-gray-300 " : ""}
+              className={disabledRows.includes(row.index) ? "bg-muted " : ""}
             >
               {row.getVisibleCells().map((cell) => {
                 const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
@@ -191,8 +191,8 @@ function SheetTable<T extends object>({
                   <TableCell
                     key={cell.id}
                     className={`border  
-                      ${isDisabled ? "bg-gray-100" : ""}
-                      ${errorMsg ? "bg-red-200" : ""}
+                      ${isDisabled ? "bg-muted" : ""}
+                      ${errorMsg ? "bg-destructive/25" : ""}
                     `}
                     // Make editable only if not disabled
                     contentEditable={!isDisabled}

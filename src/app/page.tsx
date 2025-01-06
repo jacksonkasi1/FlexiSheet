@@ -104,7 +104,7 @@ export default function HomePage() {
         data={data}
         onEdit={handleEdit}
         disabledColumns={["materialName"]} // e.g. ["materialName"]
-        disabledRows={[]}    // e.g. [1]
+        disabledRows={[1]}    // e.g. [1]
       />
 
       <button
