@@ -54,6 +54,7 @@ function SheetTable<T extends object>({
   onEdit,
   disabledColumns = [],
   disabledRows = [],
+  showHeader = true,
 }: SheetTableProps<T>) {
   /**
    * We track errors by row/column, but NOT the content of each cell.
@@ -156,19 +157,21 @@ function SheetTable<T extends object>({
         {/* Optional caption. Remove or modify if you don't need it. */}
         <TableCaption>Dynamic, editable data table.</TableCaption>
 
-        <TableHeader>
-          <TableRow>
-            {table.getFlatHeaders().map((header) => (
-              <TableHead key={header.id} className="text-left border">
-                {flexRender(
-                  header.column.columnDef.header,
-                  header.getContext(),
-                )}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-
+         {/* Conditional rendering of the header */}
+         {showHeader && (
+          <TableHeader>
+            <TableRow>
+              {table.getFlatHeaders().map((header) => (
+                <TableHead key={header.id} className="text-left border">
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+        )}
         <TableBody>
           {table.getRowModel().rows.map((row) => (
             <TableRow
