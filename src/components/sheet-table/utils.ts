@@ -8,7 +8,6 @@
  * We include:
  * - ExtendedColumnDef and SheetTableProps
  * - parseAndValidate function
- * - setCellError function
  * - getColumnKey function
  * - handleKeyDown, handlePaste
  *
@@ -93,20 +92,6 @@ export function parseAndValidate<T extends object>(
   }
 
   return { parsedValue, errorMessage };
-}
-
-/**
- * Set or clear an error for a specific [rowIndex, colKey].
- */
-export function setCellError(
-  prevErrors: Record<number, Record<string, string | null>>,
-  rowIndex: number,
-  colKey: string,
-  errorMsg: string | null
-): Record<number, Record<string, string | null>> {
-  const rowErrors = { ...prevErrors[rowIndex] };
-  rowErrors[colKey] = errorMsg;
-  return { ...prevErrors, [rowIndex]: rowErrors };
 }
 
 /**
