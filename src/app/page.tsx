@@ -75,10 +75,7 @@ export default function HomePage() {
   ) => {
     // Create a copy of data
     const newData = [...data];
-    newData[rowIndex] = {
-      ...newData[rowIndex],
-      [columnId]: value,
-    };
+    newData[rowIndex] = { ...newData[rowIndex], [columnId]: value};
     setData(newData);
 
     console.log(`State updated [row=${rowIndex}, col=${String(columnId)}]:`, value);
