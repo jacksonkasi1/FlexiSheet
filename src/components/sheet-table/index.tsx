@@ -271,11 +271,11 @@ function SheetTable<
                         suppressContentEditableWarning
                         // Capture cell's original value on focus:
                         onFocus={(e) => handleCellFocus(e, groupKey, rowIndex, colDef)}
-                        // Allow Ctrl/Cmd + A, C, X, V without blocking:
+                        // Allow Ctrl/Cmd + A, C, X, Z, V without blocking:
                         onKeyDown={(e) => {
                           if (
                             (e.ctrlKey || e.metaKey) &&
-                            ["a", "c", "x", "v"].includes(e.key.toLowerCase())
+                            ["a", "c", "x", "z", "v"].includes(e.key.toLowerCase())
                           ) {
                             // Let the user perform select, copy, cut, or paste
                             return;
