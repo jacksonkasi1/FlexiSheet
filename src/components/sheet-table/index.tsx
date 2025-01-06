@@ -33,7 +33,7 @@ import {
   getColumnKey,
   handleKeyDown,
   handlePaste,
-  isRowDisabled
+  isRowDisabled,
 } from "./utils";
 
 /**
@@ -69,15 +69,18 @@ function SheetTable<
   secondHeaderTitle = "",
 }: SheetTableProps<T>) {
   /**
-   * We track errors by (groupKey, rowIndex, colKey), but NOT the content of each cell.
-   * The DOM (contentEditable) holds the user-typed text until blur.
+   * Track errors by (groupKey, rowIndex, colKey) and
+   * track each cell's original content on focus.
    */
   const [cellErrors, setCellErrors] = useState<
     Record<string, Record<number, Record<string, string | null>>>
   >({});
+  const [cellOriginalContent, setCellOriginalContent] = useState<
+    Record<string, Record<number, Record<string, string>>>
+  >({});
 
   /**
-   * Initialize the table using TanStack Table
+   * Initialize the table using TanStack Table.
    */
   const table = useReactTable<T>({
     data,
@@ -86,16 +89,38 @@ function SheetTable<
   } as TableOptions<T>);
 
   /**
+   * Store a cell's original value whenever the user focuses that cell.
+   */
+  const handleCellFocus = useCallback(
+    (
+      e: React.FocusEvent<HTMLTableCellElement>,
+      groupKey: string,
+      rowIndex: number,
+      colDef: ExtendedColumnDef<T>
+    ) => {
+      const colKey = getColumnKey(colDef);
+      const initialText = e.currentTarget.textContent ?? "";
+
+      setCellOriginalContent((prev) => {
+        const groupContent = prev[groupKey] || {};
+        const rowContent = { ...groupContent[rowIndex], [colKey]: initialText };
+        return { ...prev, [groupKey]: { ...groupContent, [rowIndex]: rowContent } };
+      });
+    },
+    []
+  );
+
+  /**
    * Real-time validation (but we do NOT call onEdit here).
-   * This helps us show error highlighting and logs without resetting
-   * the DOM text or cursor position.
+   * This helps us show error highlighting without resetting
+   * DOM text or cursor position as the user types.
    */
   const handleCellInput = useCallback(
     (
       e: React.FormEvent<HTMLTableCellElement>,
       groupKey: string,
       rowIndex: number,
-      colDef: ExtendedColumnDef<T>,
+      colDef: ExtendedColumnDef<T>
     ) => {
       const colKey = getColumnKey(colDef);
 
@@ -109,37 +134,25 @@ function SheetTable<
       const rawValue = e.currentTarget.textContent ?? "";
       const { errorMessage } = parseAndValidate(rawValue, colDef);
 
-      // Update state to reflect error
+      // Update error state
       setCellErrors((prev) => {
         const groupErrors = prev[groupKey] || {};
         const rowErrors = { ...groupErrors[rowIndex], [colKey]: errorMessage };
         return { ...prev, [groupKey]: { ...groupErrors, [rowIndex]: rowErrors } };
       });
-
-      if (errorMessage) {
-        console.error(
-          `Group "${groupKey}", Row ${rowIndex}, Column "${colKey}" error: ${errorMessage}`
-        );
-      } else {
-        console.log(
-          `Group "${groupKey}", Row ${rowIndex}, Column "${colKey}" is valid (typing)...`
-        );
-      }
     },
-    [disabledColumns, disabledRows],
+    [disabledColumns, disabledRows]
   );
 
   /**
-   * Final check onBlur. If there's no error, we call onEdit to update parent state.
-   * This prevents losing the user’s cursor during typing, but keeps
-   * the parent data in sync once the user finishes editing.
+   * OnBlur: Only update the parent if the text actually changed from the original.
    */
   const handleCellBlur = useCallback(
     (
       e: React.FocusEvent<HTMLTableCellElement>,
       groupKey: string,
       rowIndex: number,
-      colDef: ExtendedColumnDef<T>,
+      colDef: ExtendedColumnDef<T>
     ) => {
       const colKey = getColumnKey(colDef);
 
@@ -151,8 +164,15 @@ function SheetTable<
       }
 
       const rawValue = e.currentTarget.textContent ?? "";
-      const { parsedValue, errorMessage } = parseAndValidate(rawValue, colDef);
+      const originalValue =
+        cellOriginalContent[groupKey]?.[rowIndex]?.[colKey] ?? "";
 
+      // If the user didn't change anything, skip updating.
+      if (rawValue === originalValue) {
+        return;
+      }
+
+      const { parsedValue, errorMessage } = parseAndValidate(rawValue, colDef);
       setCellErrors((prev) => {
         const groupErrors = prev[groupKey] || {};
         const rowErrors = { ...groupErrors[rowIndex], [colKey]: errorMessage };
@@ -163,18 +183,11 @@ function SheetTable<
         console.error(
           `Group "${groupKey}", Row ${rowIndex}, Column "${colKey}" final error: ${errorMessage}`
         );
-      } else {
-        console.log(
-          `Group "${groupKey}", Row ${rowIndex}, Column "${colKey}" final valid:`,
-          parsedValue
-        );
-        // If no error, update parent state
-        if (onEdit) {
-          onEdit(rowIndex, colKey as keyof T, parsedValue as T[keyof T]);
-        }
+      } else if (onEdit) {
+        onEdit(rowIndex, colKey as keyof T, parsedValue as T[keyof T]);
       }
     },
-    [disabledColumns, disabledRows, onEdit],
+    [disabledColumns, disabledRows, onEdit, cellOriginalContent]
   );
 
   /**
@@ -256,13 +269,15 @@ function SheetTable<
                         `}
                         contentEditable={!isDisabled}
                         suppressContentEditableWarning
-                         // Allow Ctrl/Cmd + A, C, X, V without blocking:
+                        // Capture cell's original value on focus:
+                        onFocus={(e) => handleCellFocus(e, groupKey, rowIndex, colDef)}
+                        // Allow Ctrl/Cmd + A, C, X, V without blocking:
                         onKeyDown={(e) => {
                           if (
                             (e.ctrlKey || e.metaKey) &&
                             ["a", "c", "x", "v"].includes(e.key.toLowerCase())
                           ) {
-                            // Let the user perform the select, copy, cut, or paste
+                            // Let the user perform select, copy, cut, or paste
                             return;
                           }
                           handleKeyDown(e, colDef);
