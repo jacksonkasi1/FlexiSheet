@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,  @typescript-eslint/no-unused-vars */
 
 /**
- * compoennts/sheet-table/utils.ts
+ * components/sheet-table/utils.ts
  *
  * Utility functions, types, and helpers used by the SheetTable component.
  * 
@@ -44,6 +44,9 @@ export interface SheetTableProps<T extends object> {
   onEdit?: <K extends keyof T>(rowIndex: number, columnId: K, value: T[K]) => void;
   disabledColumns?: string[];
   disabledRows?: number[];
+  showHeader?: boolean;
+  showSecondHeader?: boolean;
+  secondHeaderTitle?: string;
 }
 
 /**
