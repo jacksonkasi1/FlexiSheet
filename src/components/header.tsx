@@ -17,6 +17,7 @@ const Header = () => {
   const navigation = [
     { name: "Complex", href: "/" },
     { name: "Simple", href: "/normal" },
+    { name: "Simple 2", href: "/normal-2" },
   ];
 
   // Toggle between light and dark themes
