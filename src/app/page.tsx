@@ -7,25 +7,19 @@
 "use client";
 
 import React, { useState } from "react";
+
+// ** import 3rd party lib
 import { z } from "zod";
 
+// ** import ui components
+import { TableCell, TableRow } from "@/components/ui/table";
+
+// ** import component
 import SheetTable from "@/components/sheet-table";
 import { ExtendedColumnDef } from "@/components/sheet-table/utils";
 
+// ** import zod schema for row data
 import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
-
-
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableFooter,
-} from "@/components/ui/table";
-
 
 const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
 const cftSchema = rowDataZodSchema.shape.cft; // optional number >= 0
