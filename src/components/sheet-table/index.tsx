@@ -42,30 +42,6 @@ import {
 } from "./utils";
 
 /**
- * Extended props to forward additional TanStack Table config.
- * e.g., enabling resizing, customizing columnResizeMode, etc.
- */
-interface ExtraTanStackProps<T> {
-  /**
-   * If true, column sizing is enabled. We track sizes in local state.
-   */
-  enableColumnSizing?: boolean;
-
-  /**
-   * Additional table options that you want to pass directly to useReactTable.
-   * For example: initialState, columnResizeMode, etc.
-   */
-  tableOptions?: Partial<TableOptions<T>>;
-}
-
-/**
- * Combine your existing SheetTableProps with the extra TanStack props.
- */
-type SheetTableAllProps<T extends Record<string, unknown>> = 
-  SheetTableProps<T> & 
-  ExtraTanStackProps<T>;
-
-/**
  * The main SheetTable component, now with optional column sizing support.
  */
 function SheetTable<
@@ -89,7 +65,7 @@ function SheetTable<
   // Additional TanStack config
   enableColumnSizing = false,
   tableOptions = {},
-}: SheetTableAllProps<T>) {
+}: SheetTableProps<T>) {
   /**
    * If column sizing is enabled, we track sizes in state. 
    * This allows the user to define 'size', 'minSize', 'maxSize' in the column definitions.
