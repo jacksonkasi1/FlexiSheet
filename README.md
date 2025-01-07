@@ -14,6 +14,14 @@
 
 ---
 
+## Table of Contents
+1. [Features](#features)
+2. [Demo](#demo)
+3. [Installation](#installation)
+4. [Basic Usage](#basic-usage)
+5. [Advanced Options](#advanced-options)
+6. [Development](#development)
+
 ## DEMO
 
 **Link**: <https://flexisheet.vercel.app/>
