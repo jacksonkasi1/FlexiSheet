@@ -1,36 +1,200 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FlexiSheet
 
-## Getting Started
+**FlexiSheet** is a powerful, reusable table component for React applications. It supports features like editable cells, row/column disabling, Zod-based validation, grouping rows by headers, and configurable footers.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Features
+
+- **Editable Cells**: Supports real-time editing with validation.
+- **Zod Validation**: Per-column validation using Zod schemas.
+- **Row/Column Disabling**: Disable specific rows or columns.
+- **Grouping Rows**: Group data using a `headerKey` field.
+- **Footer Support**: Add totals rows and custom footer elements.
+
+---
+
+## Installation
+
+### Prerequisites
+
+Ensure you have the following installed in your project:
+
+1. **Zod** for validation:
+
+   ```bash
+   bun install zod
+   ```
+
+2. **TanStack Table** for table functionality:
+
+   ```bash
+   bun install @tanstack/react-table
+   ```
+
+3. **ShadCN/UI** for UI components:
+
+   - <https://ui.shadcn.com/docs/installation/next>
+
+   ```bash
+   bunx --bun shadcn@latest add table
+   ```
+
+4. **Tailwind CSS** for styling:
+
+   ```bash
+   bun install tailwindcss postcss autoprefix
+   ```
+
+---
+
+## Basic Usage
+
+Here is a minimal example of how to use **FlexiSheet**:
+
+### 1. Define Your Data
+
+```ts
+const initialData = [
+  { materialName: "Material A", cft: 0.1, rate: 100, amount: 10 },
+  { materialName: "Material B", cft: 0.2, rate: 200, amount: 40 },
+];
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Define Column Schema with Validation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```ts
+import { z } from "zod";
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+const materialNameSchema = z.string().min(1, "Required");
+const cftSchema = z.number().nonnegative().optional();
+const rateSchema = z.number().min(0, "Must be >= 0");
+const amountSchema = z.number().min(0, "Must be >= 0");
 
-## Learn More
+const columns = [
+  {
+    accessorKey: "materialName",
+    header: "Material Name",
+    validationSchema: materialNameSchema,
+  },
+  { accessorKey: "cft", header: "CFT", validationSchema: cftSchema },
+  { accessorKey: "rate", header: "Rate", validationSchema: rateSchema },
+  { accessorKey: "amount", header: "Amount", validationSchema: amountSchema },
+];
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Render the Table
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```tsx
+import React, { useState } from "react";
+import SheetTable from "./components/sheet-table";
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+const App = () => {
+  const [data, setData] = useState(initialData);
 
-## Deploy on Vercel
+  const handleEdit = (rowIndex, columnId, value) => {
+    const newData = [...data];
+    newData[rowIndex] = { ...newData[rowIndex], [columnId]: value };
+    setData(newData);
+  };
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+  return (
+    <SheetTable
+      columns={columns}
+      data={data}
+      onEdit={handleEdit}
+      disabledColumns={["amount"]} // Example: Disable editing for "amount" col
+      showHeader={true}
+    />
+  );
+};
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+export default App;
+```
+
+---
+
+## Advanced Options
+
+### Grouped Rows Example
+
+```ts
+const groupedData = [
+  {
+    headerKey: "Group A",
+    materialName: "Material A",
+    cft: 0.1,
+    rate: 100,
+    amount: 10,
+  },
+  {
+    headerKey: "Group A",
+    materialName: "Material B",
+    cft: 0.2,
+    rate: 200,
+    amount: 40,
+  },
+  {
+    headerKey: "Group B",
+    materialName: "Material C",
+    cft: 0.3,
+    rate: 300,
+    amount: 90,
+  },
+];
+```
+
+### Group Specific Disabled Rows
+
+```tsx
+<SheetTable
+  columns={columns}
+  data={groupedData}
+  disabledColumns={["materialName"]}
+  disabledRows={{
+    "Dipping - 2 times": [0], // Disable the second row in this group
+    Spraying: [1], // Disable the first row in this group
+  }}
+/>
+```
+
+### Footer Example
+
+```tsx
+<SheetTable
+  columns={columns}
+  data={data}
+  totalRowValues={{ cft: 0.6, rate: 600, amount: 140 }}
+  totalRowLabel="Total"
+  totalRowTitle="Summary"
+  footerElement={<div>Custom Footer Content</div>}
+/>
+```
+
+---
+
+## Development
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/jacksonkasi1/FlexiSheet.git
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   bun install
+   ```
+
+3. Run the development server:
+
+   ```bash
+   bun dev
+   ```
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
