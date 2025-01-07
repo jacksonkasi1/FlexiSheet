@@ -2,15 +2,11 @@
  * sheet-table/index.tsx
  *
  * A reusable table component with editable cells, row/column disabling,
- * and custom data support. Integrates with Zod validation per column
- * using an optional validationSchema property in the column definition.
- *
- * Adds grouping functionality based on a `headerKey` in the row data.
- * Adds a configurable footer section using:
- *  - totalRowValues (object mapping column keys to footer values)
- *  - totalRowLabel (string filler for empty cells)
- *  - totalRowTitle (sub-header row above totals)
- *  - footerElement (a custom React node to render after totals)
+ * custom data support, and Zod validation. Supports:
+ *  - Grouping rows by a `headerKey`
+ *  - A configurable footer (totals row + custom element)
+ *  - TanStack Table column sizing (size, minSize, maxSize)
+ *  - Forwarding other TanStack Table configuration via tableOptions
  */
 
 import React, { useState, useCallback } from "react";
@@ -20,6 +16,8 @@ import {
   flexRender,
   TableOptions,
   Row as TanStackRow,
+  ColumnSizingState, // for type
+  // ColumnDef,          // for type if needed
 } from "@tanstack/react-table";
 
 import {
@@ -44,24 +42,7 @@ import {
 } from "./utils";
 
 /**
- * A reusable table component with:
- *  - Editable cells
- *  - Optional per-column Zod validation
- *  - Row/column disabling
- *  - Real-time error highlighting
- *  - Only final updates to parent onBlur
- *  - Grouping rows by sub-header
- *  - Footer support (totals row, custom footer element)
- *
- * @template T
- * @param {SheetTableProps<T>} props
- *   columns: Column definitions (with optional validation)
- *   data: The main data array
- *   onEdit: Callback for finishing cell edits
- *   disabledColumns, disabledRows: for row/column disabling
- *   showHeader, showSecondHeader, secondHeaderTitle: controlling main headers
- *   totalRowValues: if provided, we render a totals row at the end
- *   totalRowLabel, totalRowTitle, footerElement: for customizing the footer
+ * The main SheetTable component, now with optional column sizing support.
  */
 function SheetTable<
   T extends Record<string, unknown> & { headerKey?: string }
@@ -80,11 +61,19 @@ function SheetTable<
   totalRowLabel = "",
   totalRowTitle,
   footerElement,
+
+  // Additional TanStack config
+  enableColumnSizing = false,
+  tableOptions = {},
 }: SheetTableProps<T>) {
   /**
-   * Instead of storing errors/original content keyed by (groupKey, rowIndex),
-   * we will use (groupKey, rowId), where rowId is from the TanStack row.id.
-   * This ensures consistent references even when data is grouped or reordered.
+   * If column sizing is enabled, we track sizes in state. 
+   * This allows the user to define 'size', 'minSize', 'maxSize' in the column definitions.
+   */
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+
+  /**
+   * We still track errors/original content keyed by (groupKey, rowId) for editing.
    */
   const [cellErrors, setCellErrors] = useState<
     Record<string, Record<string, Record<string, string | null>>>
@@ -94,17 +83,36 @@ function SheetTable<
   >({});
 
   /**
-   * Initialize the table using TanStack Table.
+   * Build the final table options. Merge user-provided tableOptions with ours.
    */
-  const table = useReactTable<T>({
+  const mergedOptions: TableOptions<T> = {
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-  } as TableOptions<T>);
+
+    // If sizing is enabled, pass sizing states:
+    ...(enableColumnSizing
+      ? {
+          state: {
+            // If user also provided tableOptions.state, merge them
+            ...tableOptions.state,
+            columnSizing,
+          },
+          onColumnSizingChange: setColumnSizing,
+          columnResizeMode: tableOptions.columnResizeMode ?? "onChange",
+        }
+      : {}),
+    // Spread any additional user-provided table options
+    ...tableOptions,
+  } as TableOptions<T>;
 
   /**
-   * Finds the TanStack row for a given data row.
-   * We need this to get row.id (the unique stable identifier).
+   * Initialize the table using TanStack Table.
+   */
+  const table = useReactTable<T>(mergedOptions);
+
+  /**
+   * Finds the TanStack row for a given data row (to get row.id).
    */
   const findTableRow = useCallback(
     (rowData: T): TanStackRow<T> | undefined => {
@@ -124,7 +132,7 @@ function SheetTable<
       colDef: ExtendedColumnDef<T>
     ) => {
       const tanStackRow = findTableRow(rowData);
-      if (!tanStackRow) return; // Shouldn't happen unless data changed
+      if (!tanStackRow) return;
 
       const rowId = tanStackRow.id;
       const colKey = getColumnKey(colDef);
@@ -254,7 +262,10 @@ function SheetTable<
         {/* If there's a totalRowTitle, show it in a single row */}
         {totalRowTitle && (
           <TableRow>
-            <TableCell colSpan={columns.length} className="border text-center font-semibold">
+            <TableCell
+              colSpan={columns.length}
+              className="border text-center font-semibold"
+            >
               {totalRowTitle}
             </TableCell>
           </TableRow>
@@ -272,10 +283,10 @@ function SheetTable<
                 cellValue !== undefined
                   ? cellValue
                   : index === 0
-                    ? (totalRowLabel || "") // Fallback to an empty string if no totalRowLabel
-                    : "";
+                  ? totalRowLabel || ""
+                  : "";
 
-              // Always apply the border to the first cell (left edge),
+              // Always apply the border to the first cell (left edge)
               // or any cell that has a displayValue.
               const applyBorder = index === 0 || displayValue !== "";
 
@@ -297,23 +308,42 @@ function SheetTable<
     );
   }
 
-
   return (
     <div className="p-4">
       <Table>
-        <TableCaption>
-          Dynamic, editable data table with grouping.
-        </TableCaption>
+        <TableCaption>Dynamic, editable data table with grouping.</TableCaption>
 
         {/* Primary header */}
         {showHeader && (
           <TableHeader>
             <TableRow>
-              {table.getFlatHeaders().map((header) => (
-                <TableHead key={header.id} className="text-left border">
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
-              ))}
+              {table.getHeaderGroups().map((headerGroup) =>
+                headerGroup.headers.map((header) => {
+                  // If column sizing is enabled, apply inline styles from TanStack (header.getSize()).
+                  // Also respect minSize/maxSize from the ExtendedColumnDef if set.
+                  const style: React.CSSProperties = {};
+                  if (enableColumnSizing) {
+                    const col = header.column.columnDef;
+                    const size = header.getSize();
+                    if (size) style.width = size + "px";
+                    if (col.minSize) style.minWidth = col.minSize + "px";
+                    if (col.maxSize) style.maxWidth = col.maxSize + "px";
+                  }
+
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className="text-left border"
+                      style={style}
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </TableHead>
+                  );
+                })
+              )}
             </TableRow>
           </TableHeader>
         )}
@@ -344,7 +374,9 @@ function SheetTable<
               )}
 
               {rows.map((rowData) => {
-                const tanStackRow = findTableRow(rowData);
+                const tanStackRow = table
+                  .getRowModel()
+                  .rows.find((r) => r.original === rowData);
                 if (!tanStackRow) return null; // Data changed significantly?
 
                 const rowId = tanStackRow.id;
@@ -353,52 +385,65 @@ function SheetTable<
 
                 return (
                   <TableRow key={rowId} className={disabled ? "bg-muted" : ""}>
-                    {columns.map((colDef) => {
-                      const colKey = getColumnKey(colDef);
+                    {tanStackRow
+                      .getVisibleCells()
+                      .map((cell) => {
+                        const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
+                        const colKey = getColumnKey(colDef);
 
-                      const isDisabled =
-                        disabled || disabledColumns.includes(colKey);
+                        const isDisabled =
+                          disabled || disabledColumns.includes(colKey);
 
-                      const errorMsg =
-                        cellErrors[groupKey]?.[rowId]?.[colKey] || null;
+                        const errorMsg =
+                          cellErrors[groupKey]?.[rowId]?.[colKey] || null;
 
-                      return (
-                        <TableCell
-                          key={`${groupKey}-${rowId}-${colKey}`}
-                          className={`border
-                            ${isDisabled ? "bg-muted" : ""}
-                            ${errorMsg ? "bg-destructive/25" : ""}
-                          `}
-                          contentEditable={!isDisabled}
-                          suppressContentEditableWarning
-                          // Original content capture on focus
-                          onFocus={(e) =>
-                            handleCellFocus(e, groupKey, rowData, colDef)
-                          }
-                          // Let user do Ctrl+A, C, X, Z, V, etc.
-                          onKeyDown={(e) => {
-                            if (
-                              (e.ctrlKey || e.metaKey) &&
-                              ["a", "c", "x", "z", "v"].includes(
-                                e.key.toLowerCase()
-                              )
-                            ) {
-                              return; // do not block
+                        // If sizing is on, also apply styles in the cell 
+                        const style: React.CSSProperties = {};
+                        if (enableColumnSizing) {
+                          const size = cell.column.getSize();
+                          if (size) style.width = size + "px";
+                          if (colDef.minSize) style.minWidth = colDef.minSize + "px";
+                          if (colDef.maxSize) style.maxWidth = colDef.maxSize + "px";
+                        }
+
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={`border
+                              ${isDisabled ? "bg-muted" : ""}
+                              ${errorMsg ? "bg-destructive/25" : ""}
+                            `}
+                            style={style}
+                            contentEditable={!isDisabled}
+                            suppressContentEditableWarning
+                            // Original content capture on focus
+                            onFocus={(e) =>
+                              handleCellFocus(e, groupKey, rowData, colDef)
                             }
-                            handleKeyDown(e, colDef);
-                          }}
-                          onPaste={(e) => handlePaste(e, colDef)}
-                          onInput={(e) =>
-                            handleCellInput(e, groupKey, rowData, colDef)
-                          }
-                          onBlur={(e) =>
-                            handleCellBlur(e, groupKey, rowData, colDef)
-                          }
-                        >
-                          {rowData[colDef.accessorKey ?? ""] as React.ReactNode}
-                        </TableCell>
-                      );
-                    })}
+                            // Let user do Ctrl+A, C, X, Z, V, etc.
+                            onKeyDown={(e) => {
+                              if (
+                                (e.ctrlKey || e.metaKey) &&
+                                ["a", "c", "x", "z", "v"].includes(
+                                  e.key.toLowerCase()
+                                )
+                              ) {
+                                return; // do not block
+                              }
+                              handleKeyDown(e, colDef);
+                            }}
+                            onPaste={(e) => handlePaste(e, colDef)}
+                            onInput={(e) =>
+                              handleCellInput(e, groupKey, rowData, colDef)
+                            }
+                            onBlur={(e) =>
+                              handleCellBlur(e, groupKey, rowData, colDef)
+                            }
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        );
+                      })}
                   </TableRow>
                 );
               })}
@@ -406,7 +451,7 @@ function SheetTable<
           ))}
         </TableBody>
 
-        {/* If totalRowValues exist, show TableFooter with totals & optional custom footer */}
+        {/* Render footer (totals row + custom footer) */}
         {renderFooter()}
       </Table>
     </div>

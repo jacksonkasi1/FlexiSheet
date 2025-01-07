@@ -15,7 +15,7 @@
  * to what was previously in sheet-table.tsx (just split out).
  */
 
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, TableOptions } from "@tanstack/react-table";
 import type { ZodType, ZodTypeDef } from "zod";
 import React from "react";
 
@@ -70,18 +70,62 @@ interface FooterProps {
 
 /**
  * Props for the SheetTable component.
- * Combine the existing SheetTableProps with footer props.
+ * Includes footer props and additional TanStack table configurations.
  */
 export interface SheetTableProps<T extends object> extends FooterProps {
+  /**
+   * Column definitions for the table.
+   */
   columns: ExtendedColumnDef<T>[];
+
+  /**
+   * Data to be displayed in the table.
+   */
   data: T[];
+
+  /**
+   * Callback for handling cell edits.
+   */
   onEdit?: <K extends keyof T>(rowIndex: number, columnId: K, value: T[K]) => void;
+
+  /**
+   * Columns that are disabled for editing.
+   */
   disabledColumns?: string[];
-  disabledRows?: number[] |  Record<string, number[]>;
+
+  /**
+   * Rows that are disabled for editing.
+   * Can be an array of row indices or a record mapping column IDs to row indices.
+   */
+  disabledRows?: number[] | Record<string, number[]>;
+
+  /**
+   * Whether to show the table header.
+   */
   showHeader?: boolean;
+
+  /**
+   * Whether to show a secondary header below the main header.
+   */
   showSecondHeader?: boolean;
+
+  /**
+   * Title for the secondary header, if enabled.
+   */
   secondHeaderTitle?: string;
+
+  /**
+   * If true, column sizing is enabled. Sizes are tracked in local state.
+   */
+  enableColumnSizing?: boolean;
+
+  /**
+   * Additional table options to be passed directly to `useReactTable`.
+   * Examples: initialState, columnResizeMode, etc.
+   */
+  tableOptions?: Partial<TableOptions<T>>;
 }
+
 
 /**
  * Returns a stable string key for each column (id > accessorKey > "").

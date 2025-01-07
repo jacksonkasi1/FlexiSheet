@@ -22,9 +22,9 @@ import { ExtendedColumnDef } from "@/components/sheet-table/utils";
 import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
 
 const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
-const cftSchema = rowDataZodSchema.shape.cft;                   // optional number >= 0
-const rateSchema = rowDataZodSchema.shape.rate;                 // required number >= 0
-const amountSchema = rowDataZodSchema.shape.amount;             // required number >= 0
+const cftSchema = rowDataZodSchema.shape.cft; // optional number >= 0
+const rateSchema = rowDataZodSchema.shape.rate; // required number >= 0
+const amountSchema = rowDataZodSchema.shape.amount; // required number >= 0
 
 /**
  * Initial data for demonstration.
@@ -37,10 +37,9 @@ const initialData: RowData[] = [
   { materialName: "Ultra Nitro Glossy 2", cft: 0.045, rate: 215, amount: 9.68 },
 ];
 
-
 /**
  * Extended column definitions, each with a validationSchema.
- * We rely on 'accessorKey' instead of 'id'. This is fine now 
+ * We rely on 'accessorKey' instead of 'id'. This is fine now
  * because we manually allowed 'accessorKey?: string'.
  */
 const columns: ExtendedColumnDef<RowData>[] = [
@@ -48,21 +47,31 @@ const columns: ExtendedColumnDef<RowData>[] = [
     accessorKey: "materialName",
     header: "Material Name",
     validationSchema: materialNameSchema,
+    size: 120,
+    minSize: 50,
+    maxSize: 100,
   },
   {
     accessorKey: "cft",
     header: "CFT",
     validationSchema: cftSchema,
+    maxSize: 20,
   },
   {
     accessorKey: "rate",
     header: "Rate",
     validationSchema: rateSchema,
+    size: 80,
+    minSize: 50,
+    maxSize: 120,
   },
   {
     accessorKey: "amount",
     header: "Amount",
     validationSchema: amountSchema,
+    size: 80,
+    minSize: 50,
+    maxSize: 120,
   },
 ];
 
@@ -78,14 +87,17 @@ export default function HomePage() {
   const handleEdit = <K extends keyof RowData>(
     rowIndex: number,
     columnId: K,
-    value: RowData[K]
+    value: RowData[K],
   ) => {
     // Create a copy of data
     const newData = [...data];
     newData[rowIndex] = { ...newData[rowIndex], [columnId]: value };
     setData(newData);
 
-    console.log(`State updated [row=${rowIndex}, col=${String(columnId)}]:`, value);
+    console.log(
+      `State updated [row=${rowIndex}, col=${String(columnId)}]:`,
+      value,
+    );
   };
 
   /**
@@ -117,9 +129,10 @@ export default function HomePage() {
         showSecondHeader={true} // Second header visibility
         secondHeaderTitle="Custom Title Example" // Title for the second header
 
+        enableColumnSizing
       />
 
-<Button onClick={handleSubmit}>Submit</Button>
+      <Button onClick={handleSubmit}>Submit</Button>
     </div>
   );
 }
