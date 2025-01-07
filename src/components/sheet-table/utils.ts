@@ -8,10 +8,9 @@
  * We include:
  * - ExtendedColumnDef and SheetTableProps
  * - parseAndValidate function
- * - setCellError function
  * - getColumnKey function
  * - handleKeyDown, handlePaste
- * 
+ *
  * This is purely for organization: the code is identical in functionality
  * to what was previously in sheet-table.tsx (just split out).
  */
@@ -43,7 +42,7 @@ export interface SheetTableProps<T extends object> {
   data: T[];
   onEdit?: <K extends keyof T>(rowIndex: number, columnId: K, value: T[K]) => void;
   disabledColumns?: string[];
-  disabledRows?: number[];
+  disabledRows?: number[] |  Record<string, number[]>;
   showHeader?: boolean;
   showSecondHeader?: boolean;
   secondHeaderTitle?: string;
@@ -96,20 +95,6 @@ export function parseAndValidate<T extends object>(
 }
 
 /**
- * Set or clear an error for a specific [rowIndex, colKey].
- */
-export function setCellError(
-  prevErrors: Record<number, Record<string, string | null>>,
-  rowIndex: number,
-  colKey: string,
-  errorMsg: string | null
-): Record<number, Record<string, string | null>> {
-  const rowErrors = { ...prevErrors[rowIndex] };
-  rowErrors[colKey] = errorMsg;
-  return { ...prevErrors, [rowIndex]: rowErrors };
-}
-
-/**
  * BLOCK non-numeric characters in numeric columns, including paste.
  * (We keep these separate so they're easy to import and use in the main component.)
  */
@@ -155,4 +140,22 @@ export function handlePaste<T extends object>(
       e.preventDefault();
     }
   }
+}
+
+
+/**
+ * Helper function to determine if a row is disabled based on the provided
+ * disabledRows prop. This prop can be either a simple array of row indices
+ * or a record keyed by groupKey mapped to arrays of row indices.
+ */
+export function isRowDisabled(
+  rows: number[] | Record<string, number[]> | undefined,
+  groupKey: string,
+  rowIndex: number
+): boolean {
+  if (!rows) return false;
+  if (Array.isArray(rows)) {
+    return rows.includes(rowIndex);
+  }
+  return rows[groupKey]?.includes(rowIndex) ?? false;
 }

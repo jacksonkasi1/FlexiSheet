@@ -5,7 +5,7 @@
  * and custom data support. Integrates with Zod validation per column
  * using an optional validationSchema property in the column definition.
  *
- * Adds grouping functionality based on a `headerKey` in the RowData.
+ * Adds grouping functionality based on a `headerKey` in the row data.
  */
 
 import React, { useState, useCallback } from "react";
@@ -30,10 +30,10 @@ import {
   ExtendedColumnDef,
   SheetTableProps,
   parseAndValidate,
-  setCellError,
   getColumnKey,
   handleKeyDown,
   handlePaste,
+  isRowDisabled,
 } from "./utils";
 
 /**
@@ -44,27 +44,43 @@ import {
  *  - Real-time error highlighting
  *  - Only final updates to parent onBlur
  *  - Grouping rows by sub-header
+ *
+ * @template T
+ * @param {object} props
+ * @param {ExtendedColumnDef<T>[]} props.columns - Column definitions extended with optional validation schemas
+ * @param {T[]} props.data - Array of data objects to display
+ * @param {(rowIndex: number, columnId: keyof T, value: T[keyof T]) => void} [props.onEdit] - Optional callback for when a cell finishes editing (onBlur)
+ * @param {string[]} [props.disabledColumns] - Array of column keys to disable
+ * @param {number[] | Record<string, number[]>} [props.disabledRows] - Array of row indices or record keyed by group, each containing an array of row indices to disable
+ * @param {boolean} [props.showHeader=true] - Whether to show the primary table header
+ * @param {boolean} [props.showSecondHeader=false] - Whether to show a second header row
+ * @param {string} [props.secondHeaderTitle=""] - Title to display if the second header row is shown
  */
-function SheetTable<T extends { headerKey?: string }>({
+function SheetTable<
+  T extends Record<string, unknown> & { headerKey?: string }
+>({
   columns,
   data,
   onEdit,
   disabledColumns = [],
   disabledRows = [],
   showHeader = true,
-  showSecondHeader = false, // Controls visibility of the second header
-  secondHeaderTitle = "", // Text for the second header
+  showSecondHeader = false,
+  secondHeaderTitle = "",
 }: SheetTableProps<T>) {
   /**
-   * We track errors by row/column, but NOT the content of each cell.
-   * The DOM itself (contentEditable) holds the user-typed text until blur.
+   * Track errors by (groupKey, rowIndex, colKey) and
+   * track each cell's original content on focus.
    */
   const [cellErrors, setCellErrors] = useState<
-    Record<number, Record<string, string | null>>
+    Record<string, Record<number, Record<string, string | null>>>
+  >({});
+  const [cellOriginalContent, setCellOriginalContent] = useState<
+    Record<string, Record<number, Record<string, string>>>
   >({});
 
   /**
-   * Initialize the table using TanStack Table
+   * Initialize the table using TanStack Table.
    */
   const table = useReactTable<T>({
     data,
@@ -73,80 +89,105 @@ function SheetTable<T extends { headerKey?: string }>({
   } as TableOptions<T>);
 
   /**
+   * Store a cell's original value whenever the user focuses that cell.
+   */
+  const handleCellFocus = useCallback(
+    (
+      e: React.FocusEvent<HTMLTableCellElement>,
+      groupKey: string,
+      rowIndex: number,
+      colDef: ExtendedColumnDef<T>
+    ) => {
+      const colKey = getColumnKey(colDef);
+      const initialText = e.currentTarget.textContent ?? "";
+
+      setCellOriginalContent((prev) => {
+        const groupContent = prev[groupKey] || {};
+        const rowContent = { ...groupContent[rowIndex], [colKey]: initialText };
+        return { ...prev, [groupKey]: { ...groupContent, [rowIndex]: rowContent } };
+      });
+    },
+    []
+  );
+
+  /**
    * Real-time validation (but we do NOT call onEdit here).
-   * This helps us show error highlighting and console logs
-   * without resetting the DOM text or cursor position.
+   * This helps us show error highlighting without resetting
+   * DOM text or cursor position as the user types.
    */
   const handleCellInput = useCallback(
     (
       e: React.FormEvent<HTMLTableCellElement>,
+      groupKey: string,
       rowIndex: number,
-      colDef: ExtendedColumnDef<T>,
+      colDef: ExtendedColumnDef<T>
     ) => {
       const colKey = getColumnKey(colDef);
-      if (disabledRows.includes(rowIndex) || disabledColumns.includes(colKey)) {
+
+      if (
+        isRowDisabled(disabledRows, groupKey, rowIndex) ||
+        disabledColumns.includes(colKey)
+      ) {
         return;
       }
 
       const rawValue = e.currentTarget.textContent ?? "";
       const { errorMessage } = parseAndValidate(rawValue, colDef);
 
-      // Update state to reflect error
-      setCellErrors((prev) =>
-        setCellError(prev, rowIndex, colKey, errorMessage),
-      );
-
-      if (errorMessage) {
-        console.error(
-          `Row ${rowIndex}, Column "${colKey}" error: ${errorMessage}`,
-        );
-      } else {
-        console.log(`Row ${rowIndex}, Column "${colKey}" is valid (typing)...`);
-      }
+      // Update error state
+      setCellErrors((prev) => {
+        const groupErrors = prev[groupKey] || {};
+        const rowErrors = { ...groupErrors[rowIndex], [colKey]: errorMessage };
+        return { ...prev, [groupKey]: { ...groupErrors, [rowIndex]: rowErrors } };
+      });
     },
-    [disabledColumns, disabledRows],
+    [disabledColumns, disabledRows]
   );
 
   /**
-   * Final check onBlur. If there's no error, we call onEdit to update parent state.
-   * This means we do NOT lose the user’s cursor during typing, but still keep
-   * the parent data in sync once the user finishes editing the cell.
+   * OnBlur: Only update the parent if the text actually changed from the original.
    */
   const handleCellBlur = useCallback(
     (
       e: React.FocusEvent<HTMLTableCellElement>,
+      groupKey: string,
       rowIndex: number,
-      colDef: ExtendedColumnDef<T>,
+      colDef: ExtendedColumnDef<T>
     ) => {
       const colKey = getColumnKey(colDef);
-      if (disabledRows.includes(rowIndex) || disabledColumns.includes(colKey)) {
+
+      if (
+        isRowDisabled(disabledRows, groupKey, rowIndex) ||
+        disabledColumns.includes(colKey)
+      ) {
         return;
       }
 
       const rawValue = e.currentTarget.textContent ?? "";
-      const { parsedValue, errorMessage } = parseAndValidate(rawValue, colDef);
+      const originalValue =
+        cellOriginalContent[groupKey]?.[rowIndex]?.[colKey] ?? "";
 
-      // Update state to reflect error
-      setCellErrors((prev) =>
-        setCellError(prev, rowIndex, colKey, errorMessage),
-      );
+      // If the user didn't change anything, skip updating.
+      if (rawValue === originalValue) {
+        return;
+      }
+
+      const { parsedValue, errorMessage } = parseAndValidate(rawValue, colDef);
+      setCellErrors((prev) => {
+        const groupErrors = prev[groupKey] || {};
+        const rowErrors = { ...groupErrors[rowIndex], [colKey]: errorMessage };
+        return { ...prev, [groupKey]: { ...groupErrors, [rowIndex]: rowErrors } };
+      });
 
       if (errorMessage) {
         console.error(
-          `Row ${rowIndex}, Column "${colKey}" final error: ${errorMessage}`,
+          `Group "${groupKey}", Row ${rowIndex}, Column "${colKey}" final error: ${errorMessage}`
         );
-      } else {
-        console.log(
-          `Row ${rowIndex}, Column "${colKey}" final valid:`,
-          parsedValue,
-        );
-        // If no error, update parent state
-        if (onEdit) {
-          onEdit(rowIndex, colKey as keyof T, parsedValue as T[keyof T]);
-        }
+      } else if (onEdit) {
+        onEdit(rowIndex, colKey as keyof T, parsedValue as T[keyof T]);
       }
     },
-    [disabledColumns, disabledRows, onEdit],
+    [disabledColumns, disabledRows, onEdit, cellOriginalContent]
   );
 
   /**
@@ -163,29 +204,24 @@ function SheetTable<T extends { headerKey?: string }>({
 
   return (
     <div className="p-4">
-      {/* Shadcn UI Table */}
       <Table>
-        {/* Optional caption. Remove or modify if you don't need it. */}
+        {/* Optional caption. Modify or remove as needed. */}
         <TableCaption>Dynamic, editable data table with grouping.</TableCaption>
 
-        {/* Conditional rendering of the header */}
+        {/* Primary header */}
         {showHeader && (
           <TableHeader>
             <TableRow>
               {table.getFlatHeaders().map((header) => (
                 <TableHead key={header.id} className="text-left border">
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                  )}
+                  {flexRender(header.column.columnDef.header, header.getContext())}
                 </TableHead>
               ))}
             </TableRow>
-
           </TableHeader>
         )}
 
-        {/* Conditional rendering of the second header */}
+        {/* Optional second header */}
         {showSecondHeader && secondHeaderTitle && (
           <TableRow>
             <TableHead colSpan={columns.length} className="text-center border">
@@ -195,7 +231,7 @@ function SheetTable<T extends { headerKey?: string }>({
         )}
 
         <TableBody>
-          {Object.entries(groupedData).map(([groupKey, rows], groupIndex) => (
+          {Object.entries(groupedData).map(([groupKey, rows]) => (
             <React.Fragment key={groupKey}>
               {groupKey !== "ungrouped" && (
                 <TableRow>
@@ -209,50 +245,51 @@ function SheetTable<T extends { headerKey?: string }>({
               )}
               {rows.map((row, rowIndex) => (
                 <TableRow
-                  key={`${groupIndex}-${rowIndex}`}
-                  className={disabledRows.includes(rowIndex) ? "bg-muted" : ""}
+                  key={`${groupKey}-${rowIndex}`}
+                  className={
+                    isRowDisabled(disabledRows, groupKey, rowIndex) ? "bg-muted" : ""
+                  }
                 >
-                  {table
-                    .getRowModel()
-                    .rows[rowIndex]?.getVisibleCells()
-                    .map((cell) => {
-                      const colDef = cell.column
-                        .columnDef as ExtendedColumnDef<T>;
-                      const colKey = getColumnKey(colDef);
+                  {columns.map((colDef, colIndex) => {
+                    const colKey = getColumnKey(colDef);
 
-                      // Determine if cell is disabled
-                      const isDisabled =
-                        disabledRows.includes(rowIndex) ||
-                        disabledColumns.includes(colKey);
+                    const isDisabled =
+                      isRowDisabled(disabledRows, groupKey, rowIndex) ||
+                      disabledColumns.includes(colKey);
 
-                      // Check for error
-                      const errorMsg = cellErrors[rowIndex]?.[colKey] || null;
+                    const errorMsg =
+                      cellErrors[groupKey]?.[rowIndex]?.[colKey] || null;
 
-                      return (
-                        <TableCell
-                          key={cell.id}
-                          className={`border  
+                    return (
+                      <TableCell
+                        key={`${groupKey}-${rowIndex}-${colIndex}`}
+                        className={`border
                           ${isDisabled ? "bg-muted" : ""}
                           ${errorMsg ? "bg-destructive/25" : ""}
                         `}
-                          // Make editable only if not disabled
-                          contentEditable={!isDisabled}
-                          suppressContentEditableWarning
-                          // BLOCK invalid chars (letters) for numeric columns
-                          onKeyDown={(e) => handleKeyDown(e, colDef)}
-                          onPaste={(e) => handlePaste(e, colDef)}
-                          // Real-time check => highlight errors or success logs
-                          onInput={(e) => handleCellInput(e, rowIndex, colDef)}
-                          // Final check => if valid => onEdit => updates parent
-                          onBlur={(e) => handleCellBlur(e, rowIndex, colDef)}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      );
-                    })}
+                        contentEditable={!isDisabled}
+                        suppressContentEditableWarning
+                        // Capture cell's original value on focus:
+                        onFocus={(e) => handleCellFocus(e, groupKey, rowIndex, colDef)}
+                        // Allow Ctrl/Cmd + A, C, X, Z, V without blocking:
+                        onKeyDown={(e) => {
+                          if (
+                            (e.ctrlKey || e.metaKey) &&
+                            ["a", "c", "x", "z", "v"].includes(e.key.toLowerCase())
+                          ) {
+                            // Let the user perform select, copy, cut, or paste
+                            return;
+                          }
+                          handleKeyDown(e, colDef);
+                        }}
+                        onPaste={(e) => handlePaste(e, colDef)}
+                        onInput={(e) => handleCellInput(e, groupKey, rowIndex, colDef)}
+                        onBlur={(e) => handleCellBlur(e, groupKey, rowIndex, colDef)}
+                      >
+                        {row[colDef.accessorKey || ""] as React.ReactNode}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))}
             </React.Fragment>
