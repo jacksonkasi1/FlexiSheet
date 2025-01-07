@@ -7,11 +7,19 @@
 "use client";
 
 import React, { useState } from "react";
+
+// ** import 3rd party lib
 import { z } from "zod";
 
+// ** import ui components
+import { Button } from "@/components/ui/button";
+import { TableCell, TableRow } from "@/components/ui/table";
+
+// ** import component
 import SheetTable from "@/components/sheet-table";
 import { ExtendedColumnDef } from "@/components/sheet-table/utils";
 
+// ** import zod schema for row data
 import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
 
 const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
@@ -137,28 +145,35 @@ export default function HomePage() {
         data={data}
         onEdit={handleEdit}
         disabledColumns={["materialName"]} // e.g. ["materialName"]
-        disabledRows={{ // optional: disable specific rows
+        disabledRows={{
+          // optional: disable specific rows
           "Dipping - 2 times": [0], // Disable the second row in this group
           Spraying: [1], // Disable the first row in this group
         }}
+        // Grouping & header props
         showHeader={true} // First header visibility
         showSecondHeader={true} // Second header visibility
         secondHeaderTitle="Custom Title Example" // Title for the second header
+        // Footer props
+        totalRowValues={{
+          // cft: 0.4,
+          rate: 560,
+          amount: 38.17,
+        }}
+        totalRowLabel="Total"
+        totalRowTitle="Summary (Footer Total Title)"
+        footerElement={
+          <TableRow>
+            <TableCell className="border" colSpan={2}>
+              Custom Footer Note
+            </TableCell>
+            <TableCell className="border">Misc</TableCell>
+            <TableCell className="border">Extra Info</TableCell>
+          </TableRow>
+        }
       />
 
-      <button
-        style={{
-          marginTop: "1rem",
-          padding: "0.5rem 1rem",
-          backgroundColor: "#007bff",
-          color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-        }}
-        onClick={handleSubmit}
-      >
-        Submit
-      </button>
+      <Button onClick={handleSubmit}>Submit</Button>
     </div>
   );
 }
