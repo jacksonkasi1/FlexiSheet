@@ -15,7 +15,7 @@
  * to what was previously in sheet-table.tsx (just split out).
  */
 
-import type { ColumnDef, TableOptions } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { ZodType, ZodTypeDef } from "zod";
 import React from "react";
 
@@ -34,10 +34,45 @@ export type ExtendedColumnDef<
   validationSchema?: ZodType<any, ZodTypeDef, any>;
 };
 
+
+/**
+ * Extended props for footer functionality.
+ */
+interface FooterProps {
+  /**
+   * totalRowValues:
+   *  - Object mapping column ID/accessorKey => any
+   *  - If provided, we render a special totals row at the bottom of the table.
+   */
+  totalRowValues?: Record<string, any>;
+
+  /**
+   * totalRowLabel:
+   *  - A string label used to fill empty cells in the totals row.
+   *  - Defaults to "" if omitted.
+   */
+  totalRowLabel?: string;
+
+  /**
+   * totalRowTitle:
+   *  - A string displayed on a separate row above the totals row.
+   *  - Shown only if totalRowValues is provided as well.
+   */
+  totalRowTitle?: string;
+
+  /**
+   * footerElement:
+   *  - A React node rendered below the totals row.
+   *  - If omitted, no extra footer node is rendered.
+   */
+  footerElement?: React.ReactNode;
+}
+
 /**
  * Props for the SheetTable component.
+ * Combine the existing SheetTableProps with footer props.
  */
-export interface SheetTableProps<T extends object> {
+export interface SheetTableProps<T extends object> extends FooterProps {
   columns: ExtendedColumnDef<T>[];
   data: T[];
   onEdit?: <K extends keyof T>(rowIndex: number, columnId: K, value: T[K]) => void;

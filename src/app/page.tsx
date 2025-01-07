@@ -14,6 +14,19 @@ import { ExtendedColumnDef } from "@/components/sheet-table/utils";
 
 import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
 
+
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableFooter,
+} from "@/components/ui/table";
+
+
 const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
 const cftSchema = rowDataZodSchema.shape.cft; // optional number >= 0
 const rateSchema = rowDataZodSchema.shape.rate; // required number >= 0
@@ -141,9 +154,27 @@ export default function HomePage() {
           "Dipping - 2 times": [0], // Disable the second row in this group
           Spraying: [1], // Disable the first row in this group
         }}
+
+        // Grouping & header props
         showHeader={true} // First header visibility
         showSecondHeader={true} // Second header visibility
         secondHeaderTitle="Custom Title Example" // Title for the second header
+
+        // Footer props
+        totalRowValues={{
+          // cft: 0.4,
+          rate: 560,
+          amount: 38.17,
+        }}
+        totalRowLabel="Total"
+        totalRowTitle="Summary (Footer Total Title)"
+        footerElement={
+          <TableRow >
+            <TableCell className="border" colSpan={2}>Custom Footer Note</TableCell>
+            <TableCell className="border" >Misc</TableCell>
+            <TableCell className="border" >Extra Info</TableCell>
+          </TableRow>
+        }
       />
 
       <button
