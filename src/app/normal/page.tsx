@@ -130,11 +130,6 @@ export default function HomePage() {
         secondHeaderTitle="Custom Title Example" // Title for the second header
 
         enableColumnSizing
-        tableOptions={{
-          columnResizeMode: "onChange",
-          // e.g., if you wanted to set an initialState or something else:
-
-        }}
       />
 
       <Button onClick={handleSubmit}>Submit</Button>
