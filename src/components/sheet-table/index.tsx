@@ -235,6 +235,8 @@ function SheetTable<
   return (
     <div className="p-4">
       <Table>
+
+        {/* If table caption is not needed, remove this block */}
         <TableCaption>
           Dynamic, editable data table with grouping.
         </TableCaption>
