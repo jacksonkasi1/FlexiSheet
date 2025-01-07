@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     siteName: "FlexiSheet",
     images: [
       {
-        url: "https://flexisheet.vercel.app/og-image.jpg",
+        url: "https://flexisheet.vercel.app/og-image.png",
         width: 1200,
         height: 630,
         alt: "FlexiSheet - Reusable and Editable Tables",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     title: "FlexiSheet - Reusable and Editable Tables",
     description:
       "Discover FlexiSheet: A dynamic, reusable table component for React applications.",
-    images: ["https://flexisheet.vercel.app/og-image.jpg"],
+    images: ["https://flexisheet.vercel.app/og-image.png"],
   },
 };
 
