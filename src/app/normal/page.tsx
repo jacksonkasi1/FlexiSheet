@@ -11,6 +11,9 @@ import React, { useState } from "react";
 // ** import 3rd party lib
 import { z } from "zod";
 
+// ** import ui components
+import { Button } from "@/components/ui/button";
+
 // ** import components
 import SheetTable from "@/components/sheet-table";
 import { ExtendedColumnDef } from "@/components/sheet-table/utils";
@@ -116,19 +119,7 @@ export default function HomePage() {
 
       />
 
-      <button
-        style={{
-          marginTop: "1rem",
-          padding: "0.5rem 1rem",
-          backgroundColor: "#007bff",
-          color: "#fff",
-          border: "none",
-          borderRadius: "4px",
-        }}
-        onClick={handleSubmit}
-      >
-        Submit
-      </button>
+<Button onClick={handleSubmit}>Submit</Button>
     </div>
   );
 }
