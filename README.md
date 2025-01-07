@@ -14,6 +14,12 @@
 
 ---
 
+## DEMO
+
+**Link**: <https://flexisheet.vercel.app/>
+
+![FlexiSheet Demo](https://flexisheet.vercel.app/og-image.png)
+
 ## Installation
 
 ### Prerequisites
