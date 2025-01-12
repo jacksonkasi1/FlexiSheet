@@ -31,9 +31,47 @@ const amountSchema = rowDataZodSchema.shape.amount; // required number >= 0
  */
 const initialData: RowData[] = [
   { materialName: "Ultra Nitro Sealer", cft: 0.03, rate: 164, amount: 5.17 },
-  { materialName: "NC Thinner (Spl)", cft: 0.202, rate: 93, amount: 19.73 },
+  {
+    materialName: "NC Thinner (Spl)",
+    cft: 0.202,
+    rate: 93,
+    amount: 19.73,
+    subRows: [
+      {
+        materialName: "NC Thinner (Spl) 1",
+        cft: 0.202,
+        rate: 93,
+        amount: 19.73,
+      },
+      {
+        materialName: "NC Thinner (Spl) 2",
+        cft: 0.202,
+        rate: 93,
+        amount: 19.73,
+      },
+    ],
+  },
   { materialName: "Ultra Nitro Sealer 2", cft: 0.072, rate: 164, amount: 12.4 },
-  { materialName: "Ultra Nitro Matt 2", cft: 0.051, rate: 209, amount: 11.19 },
+  {
+    materialName: "Ultra Nitro Matt 2",
+    cft: 0.051,
+    rate: 209,
+    amount: 11.19,
+    subRows: [
+      {
+        materialName: "Ultra Nitro Matt 2 1",
+        cft: 0.051,
+        rate: 209,
+        amount: 11.19,
+      },
+      {
+        materialName: "Ultra Nitro Matt 2 2",
+        cft: 0.051,
+        rate: 209,
+        amount: 11.19,
+      },
+    ],
+  },
   { materialName: "Ultra Nitro Glossy 2", cft: 0.045, rate: 215, amount: 9.68 },
 ];
 
@@ -128,7 +166,6 @@ export default function HomePage() {
         showHeader={true} // First header visibility
         showSecondHeader={true} // Second header visibility
         secondHeaderTitle="Custom Title Example" // Title for the second header
-
         enableColumnSizing
       />
 
