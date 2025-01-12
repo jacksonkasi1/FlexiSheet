@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
  * The main SheetTable component, now with optional column sizing support.
  */
 function SheetTable<
-  T extends Record<string, unknown> & { headerKey?: string }
+  T extends Record<string, unknown> & { headerKey?: string },
 >({
   columns,
   data,
@@ -72,7 +72,7 @@ function SheetTable<
   tableOptions = {},
 }: SheetTableProps<T>) {
   /**
-   * If column sizing is enabled, we track sizes in state. 
+   * If column sizing is enabled, we track sizes in state.
    * This allows the user to define 'size', 'minSize', 'maxSize' in the column definitions.
    */
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
@@ -94,6 +94,7 @@ function SheetTable<
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getSubRows: (row) => (row.subRows ? (row.subRows as T[]) : undefined),  // It returns returns T[] or undefined. T[] is the type of the subRows.
 
     // If sizing is enabled, pass sizing states:
     ...(enableColumnSizing
@@ -123,7 +124,7 @@ function SheetTable<
     (rowData: T): TanStackRow<T> | undefined => {
       return table.getRowModel().rows.find((r) => r.original === rowData);
     },
-    [table]
+    [table],
   );
 
   /**
@@ -134,7 +135,7 @@ function SheetTable<
       e: React.FocusEvent<HTMLTableCellElement>,
       groupKey: string,
       rowData: T,
-      colDef: ExtendedColumnDef<T>
+      colDef: ExtendedColumnDef<T>,
     ) => {
       const tanStackRow = findTableRow(rowData);
       if (!tanStackRow) return;
@@ -149,10 +150,13 @@ function SheetTable<
           ...(groupContent[rowId] || {}),
           [colKey]: initialText,
         };
-        return { ...prev, [groupKey]: { ...groupContent, [rowId]: rowContent } };
+        return {
+          ...prev,
+          [groupKey]: { ...groupContent, [rowId]: rowContent },
+        };
       });
     },
-    [findTableRow]
+    [findTableRow],
   );
 
   /**
@@ -163,7 +167,7 @@ function SheetTable<
       e: React.FormEvent<HTMLTableCellElement>,
       groupKey: string,
       rowData: T,
-      colDef: ExtendedColumnDef<T>
+      colDef: ExtendedColumnDef<T>,
     ) => {
       const tanStackRow = findTableRow(rowData);
       if (!tanStackRow) return;
@@ -184,11 +188,14 @@ function SheetTable<
 
       setCellErrors((prev) => {
         const groupErrors = prev[groupKey] || {};
-        const rowErrors = { ...(groupErrors[rowId] || {}), [colKey]: errorMessage };
+        const rowErrors = {
+          ...(groupErrors[rowId] || {}),
+          [colKey]: errorMessage,
+        };
         return { ...prev, [groupKey]: { ...groupErrors, [rowId]: rowErrors } };
       });
     },
-    [disabledColumns, disabledRows, findTableRow]
+    [disabledColumns, disabledRows, findTableRow],
   );
 
   /**
@@ -199,7 +206,7 @@ function SheetTable<
       e: React.FocusEvent<HTMLTableCellElement>,
       groupKey: string,
       rowData: T,
-      colDef: ExtendedColumnDef<T>
+      colDef: ExtendedColumnDef<T>,
     ) => {
       const tanStackRow = findTableRow(rowData);
       if (!tanStackRow) return;
@@ -228,20 +235,23 @@ function SheetTable<
 
       setCellErrors((prev) => {
         const groupErrors = prev[groupKey] || {};
-        const rowErrors = { ...(groupErrors[rowId] || {}), [colKey]: errorMessage };
+        const rowErrors = {
+          ...(groupErrors[rowId] || {}),
+          [colKey]: errorMessage,
+        };
         return { ...prev, [groupKey]: { ...groupErrors, [rowId]: rowErrors } };
       });
 
       if (errorMessage) {
         console.error(
-          `Group "${groupKey}", Row "${rowId}", Col "${colKey}" final error: ${errorMessage}`
+          `Group "${groupKey}", Row "${rowId}", Col "${colKey}" final error: ${errorMessage}`,
         );
       } else if (onEdit) {
         // We pass tanStackRow.index for the parent's usage
         onEdit(tanStackRow.index, colKey as keyof T, parsedValue as T[keyof T]);
       }
     },
-    [disabledColumns, disabledRows, findTableRow, cellOriginalContent, onEdit]
+    [disabledColumns, disabledRows, findTableRow, cellOriginalContent, onEdit],
   );
 
   /**
@@ -343,11 +353,11 @@ function SheetTable<
                     >
                       {flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                     </TableHead>
                   );
-                })
+                }),
               )}
             </TableRow>
           </TableHeader>
@@ -386,75 +396,83 @@ function SheetTable<
 
                 const rowId = tanStackRow.id;
                 const rowIndex = tanStackRow.index;
-                const disabled = isRowDisabled(disabledRows, groupKey, rowIndex);
+                const disabled = isRowDisabled(
+                  disabledRows,
+                  groupKey,
+                  rowIndex,
+                );
 
                 return (
                   <TableRow key={rowId} className={disabled ? "bg-muted" : ""}>
-                    {tanStackRow
-                      .getVisibleCells()
-                      .map((cell) => {
-                        const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
-                        const colKey = getColumnKey(colDef);
+                    {tanStackRow.getVisibleCells().map((cell) => {
+                      const colDef = cell.column
+                        .columnDef as ExtendedColumnDef<T>;
+                      const colKey = getColumnKey(colDef);
 
-                        const isDisabled =
-                          disabled || disabledColumns.includes(colKey);
+                      const isDisabled =
+                        disabled || disabledColumns.includes(colKey);
 
-                        const errorMsg =
-                          cellErrors[groupKey]?.[rowId]?.[colKey] || null;
+                      const errorMsg =
+                        cellErrors[groupKey]?.[rowId]?.[colKey] || null;
 
-                        // If sizing is on, also apply styles in the cell 
-                        const style: React.CSSProperties = {};
-                        if (enableColumnSizing) {
-                          const size = cell.column.getSize();
-                          if (size) style.width = size + "px";
-                          if (colDef.minSize) style.minWidth = colDef.minSize + "px";
-                          if (colDef.maxSize) style.maxWidth = colDef.maxSize + "px";
-                        }
+                      // If sizing is on, also apply styles in the cell
+                      const style: React.CSSProperties = {};
+                      if (enableColumnSizing) {
+                        const size = cell.column.getSize();
+                        if (size) style.width = size + "px";
+                        if (colDef.minSize)
+                          style.minWidth = colDef.minSize + "px";
+                        if (colDef.maxSize)
+                          style.maxWidth = colDef.maxSize + "px";
+                      }
 
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className={cn(
-                              "border", // Base class
-                              {
-                                "bg-muted": isDisabled, // Apply bg-muted if the cell is disabled
-                                "bg-destructive/25": errorMsg, // Apply bg-destructive/25 if there's an error
-                              },
-                              typeof colDef.className === "function"
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            "border", // Base class
+                            {
+                              "bg-muted": isDisabled, // Apply bg-muted if the cell is disabled
+                              "bg-destructive/25": errorMsg, // Apply bg-destructive/25 if there's an error
+                            },
+                            typeof colDef.className === "function"
                               ? colDef.className(rowData) // Dynamic class name based on row data
-                              : colDef.className // Static class name
-                            )}
-                            style={{ ...colDef.style, ...style }} // Combine column style with dynamic styles
-                            contentEditable={!isDisabled}
-                            suppressContentEditableWarning
-                            // Original content capture on focus
-                            onFocus={(e) =>
-                              handleCellFocus(e, groupKey, rowData, colDef)
+                              : colDef.className, // Static class name
+                          )}
+                          style={{ ...colDef.style, ...style }} // Combine column style with dynamic styles
+                          contentEditable={!isDisabled}
+                          suppressContentEditableWarning
+                          // Original content capture on focus
+                          onFocus={(e) =>
+                            handleCellFocus(e, groupKey, rowData, colDef)
+                          }
+                          // Let user do Ctrl+A, C, X, Z, V, etc.
+                          onKeyDown={(e) => {
+                            if (
+                              (e.ctrlKey || e.metaKey) &&
+                              ["a", "c", "x", "z", "v"].includes(
+                                e.key.toLowerCase(),
+                              )
+                            ) {
+                              return; // do not block
                             }
-                            // Let user do Ctrl+A, C, X, Z, V, etc.
-                            onKeyDown={(e) => {
-                              if (
-                                (e.ctrlKey || e.metaKey) &&
-                                ["a", "c", "x", "z", "v"].includes(
-                                  e.key.toLowerCase()
-                                )
-                              ) {
-                                return; // do not block
-                              }
-                              handleKeyDown(e, colDef);
-                            }}
-                            onPaste={(e) => handlePaste(e, colDef)}
-                            onInput={(e) =>
-                              handleCellInput(e, groupKey, rowData, colDef)
-                            }
-                            onBlur={(e) =>
-                              handleCellBlur(e, groupKey, rowData, colDef)
-                            }
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        );
-                      })}
+                            handleKeyDown(e, colDef);
+                          }}
+                          onPaste={(e) => handlePaste(e, colDef)}
+                          onInput={(e) =>
+                            handleCellInput(e, groupKey, rowData, colDef)
+                          }
+                          onBlur={(e) =>
+                            handleCellBlur(e, groupKey, rowData, colDef)
+                          }
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
                 );
               })}

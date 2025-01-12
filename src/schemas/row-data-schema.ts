@@ -21,4 +21,7 @@ export const rowDataZodSchema = z.object({
 /**
  * The inferred TypeScript type for row data based on the Zod schema.
  */
-export type RowData = z.infer<typeof rowDataZodSchema>;
+export type RowData = z.infer<typeof rowDataZodSchema> & {
+  // Add any additional properties here.
+  subRows?: RowData[]; // Add subRows for nested rows
+};
