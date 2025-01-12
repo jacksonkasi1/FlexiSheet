@@ -14,7 +14,7 @@ import React, { useState, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
-  getExpandedRowModel,   // <-- For expansions
+  getExpandedRowModel, // <-- For expansions
   flexRender,
   TableOptions,
   Row as TanStackRow,
@@ -52,7 +52,11 @@ import { cn } from "@/lib/utils";
  * and sub-row expansions.
  */
 function SheetTable<
-  T extends Record<string, unknown> & { id?: string | number, headerKey?: string; subRows?: T[] }
+  T extends Record<string, unknown> & {
+    id?: string | number;
+    headerKey?: string;
+    subRows?: T[];
+  },
 >({
   columns,
   data,
@@ -116,8 +120,8 @@ function SheetTable<
       expanded,
       ...(enableColumnSizing
         ? {
-          columnSizing,
-        }
+            columnSizing,
+          }
         : {}),
     },
     onExpandedChange: setExpanded, // keep expansions in local state
@@ -125,9 +129,9 @@ function SheetTable<
     // If sizing is enabled, pass sizing states:
     ...(enableColumnSizing
       ? {
-        onColumnSizingChange: setColumnSizing,
-        columnResizeMode: tableOptions.columnResizeMode ?? "onChange",
-      }
+          onColumnSizingChange: setColumnSizing,
+          columnResizeMode: tableOptions.columnResizeMode ?? "onChange",
+        }
       : {}),
 
     // Spread any other user-provided table options
@@ -237,7 +241,7 @@ function SheetTable<
       const tanStackRow = findTableRow(rowData);
       if (!tanStackRow) return;
 
-      const rowId = tanStackRow.id;    // <--- Use rowId to
+      const rowId = tanStackRow.id; // <--- Use rowId to
       const colKey = getColumnKey(colDef);
 
       if (
@@ -248,7 +252,8 @@ function SheetTable<
       }
 
       const rawValue = e.currentTarget.textContent ?? "";
-      const originalValue = cellOriginalContent[groupKey]?.[rowId]?.[colKey] ?? "";
+      const originalValue =
+        cellOriginalContent[groupKey]?.[rowId]?.[colKey] ?? "";
 
       // If nothing changed, do nothing
       if (rawValue === originalValue) {
@@ -268,19 +273,19 @@ function SheetTable<
 
       if (errorMessage) {
         console.error(
-          `Group "${groupKey}", Row "${rowId}", Col "${colKey}" final error: ${errorMessage}`
+          `Group "${groupKey}", Row "${rowId}", Col "${colKey}" final error: ${errorMessage}`,
         );
       } else if (onEdit) {
         // Instead of rowIndex, we pass the row's unique ID from TanStack
         onEdit(rowId, colKey as keyof T, parsedValue as T[keyof T]);
       }
     },
-    [disabledColumns, disabledRows, findTableRow, cellOriginalContent, onEdit]
+    [disabledColumns, disabledRows, findTableRow, cellOriginalContent, onEdit],
   );
 
   /**
    * Group data by the `headerKey` field (top-level only).
-   * Sub-rows are handled by TanStack expansions. 
+   * Sub-rows are handled by TanStack expansions.
    */
   const groupedData = data.reduce<Record<string, T[]>>((acc, row) => {
     const group = row.headerKey || "ungrouped";
@@ -332,7 +337,10 @@ function SheetTable<
             }
 
             // For the first cell, we place the expand/collapse toggle if subRows exist.
-            let cellContent = flexRender(cell.column.columnDef.cell, cell.getContext());
+            let cellContent = flexRender(
+              cell.column.columnDef.cell,
+              cell.getContext(),
+            );
             if (cellIndex === 0 && hasSubRows) {
               cellContent = (
                 <div className="flex items-center gap-1">
@@ -350,7 +358,9 @@ function SheetTable<
             // Optional indentation for subRows
             // e.g. style={{ marginLeft: level * 20 }} or a left padding class
             // We'll do a small inline style here for demonstration:
-            const indentStyle: React.CSSProperties = { paddingLeft: level * 20 };
+            const indentStyle: React.CSSProperties = {
+              paddingLeft: level * 20,
+            };
 
             return (
               <TableCell
@@ -428,8 +438,8 @@ function SheetTable<
                 cellValue !== undefined
                   ? cellValue
                   : index === 0
-                    ? totalRowLabel || ""
-                    : "";
+                  ? totalRowLabel || ""
+                  : "";
 
               // Always apply the border to the first cell or any cell that has a displayValue
               const applyBorder = index === 0 || displayValue !== "";
