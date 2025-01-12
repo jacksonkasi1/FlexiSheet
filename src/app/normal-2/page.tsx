@@ -4,6 +4,7 @@ import { ExtendedColumnDef } from "@/components/sheet-table/utils"
 
 type MyData = {
   headerKey?: string
+  id: string
   materialName: string
   quantity: number
   cost: number
@@ -32,8 +33,8 @@ const columns: ExtendedColumnDef<MyData>[] = [
 ]
 
 const data: MyData[] = [
-  { materialName: "Pine Wood", quantity: 5, cost: 100 },
-  { materialName: "Rubber Wood", quantity: 3, cost: 75 },
+  { id: "1", materialName: "Pine Wood", quantity: 5, cost: 100 },
+  { id: "2", materialName: "Rubber Wood", quantity: 3, cost: 75 },
   // ...
 ]
 

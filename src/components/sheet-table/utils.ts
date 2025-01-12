@@ -89,7 +89,7 @@ export interface SheetTableProps<T extends object> extends FooterProps {
   /**
    * Callback for handling cell edits.
    */
-  onEdit?: <K extends keyof T>(rowIndex: number, columnId: K, value: T[K]) => void;
+  onEdit?: <K extends keyof T>(rowIndex: string, columnId: K, value: T[K]) => void;
 
   /**
    * Columns that are disabled for editing.

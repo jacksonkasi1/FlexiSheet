@@ -33,13 +33,15 @@ const amountSchema = rowDataZodSchema.shape.amount; // required number >= 0
 const initialData: RowData[] = [
   {
     headerKey: "Dipping - 2 times",
+    id: "1",
     materialName: "Ultra Nitro Sealer",
     cft: 0.03,
     rate: 164,
-    amount: 5.17,
+    amount: 5.17
   },
   {
     headerKey: "Dipping - 2 times",
+    id: "2",
     materialName: "NC Thinner (Spl)",
     cft: 0.202,
     rate: 93,
@@ -47,6 +49,7 @@ const initialData: RowData[] = [
   },
   {
     headerKey: "Spraying",
+    id: "3",
     materialName: "Ultra Nitro Sealer 2",
     cft: 0.072,
     rate: 164,
@@ -54,6 +57,7 @@ const initialData: RowData[] = [
   },
   {
     headerKey: "Spraying",
+    id: "4",
     materialName: "Ultra Nitro Matt 2",
     cft: 0.051,
     rate: 209,
@@ -61,10 +65,12 @@ const initialData: RowData[] = [
   },
   {
     headerKey: "Spraying",
+    id: "5",
     materialName: "Ultra Nitro Glossy 2",
     cft: 0.045,
     rate: 215,
     amount: 120,
+
   },
 ];
 
@@ -94,7 +100,7 @@ const columns: ExtendedColumnDef<RowData>[] = [
     accessorKey: "amount",
     header: "Amount",
     validationSchema: amountSchema,
-    className: (row) => (row.amount > 100 ?  "text-green-500" : "text-red-500"), // Dynamic styling based on row data
+    className: (row) => (row.amount > 100 ? "text-green-500" : "text-red-500"), // Dynamic styling based on row data
   },
 ];
 
@@ -104,21 +110,25 @@ const columns: ExtendedColumnDef<RowData>[] = [
 export default function HomePage() {
   const [data, setData] = useState<RowData[]>(initialData);
 
+
   /**
-   * onEdit callback: updates local state if the new value is valid.
+   * onEdit callback: updates local state if the new value is valid. (Normal usage)
    */
   const handleEdit = <K extends keyof RowData>(
-    rowIndex: number,
-    columnId: K,
-    value: RowData[K],
+    rowId: string, // Unique identifier for the row
+    columnId: K,   // Column key
+    value: RowData[K], // New value for the cell
   ) => {
-    // Create a copy of data
-    const newData = [...data];
-    newData[rowIndex] = { ...newData[rowIndex], [columnId]: value };
-    setData(newData);
+    setData((prevData) =>
+      prevData.map((row) =>
+        String(row.id) === rowId
+          ? { ...row, [columnId]: value } // Update the row if the ID matches
+          : row // Otherwise, return the row unchanged
+      )
+    );
 
     console.log(
-      `State updated [row=${rowIndex}, col=${String(columnId)}]:`,
+      `State updated [row id=${rowId}, column=${columnId}, value=${value}]`,
       value,
     );
   };
