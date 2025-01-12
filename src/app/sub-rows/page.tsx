@@ -237,6 +237,13 @@ export default function HomePage() {
         showHeader={true}
         showSecondHeader={true}
         secondHeaderTitle="Custom Title Example"
+        totalRowTitle="Total"
+        totalRowValues={{
+          materialName: "Total",
+          cft: data.reduce((sum, row) => sum + (row.cft || 0), 0),
+          rate: data.reduce((sum, row) => sum + row.rate, 0),
+          amount: data.reduce((sum, row) => sum + row.amount, 0),
+        }}
         enableColumnSizing
       />
 
