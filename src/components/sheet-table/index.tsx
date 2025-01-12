@@ -53,6 +53,7 @@ import { cn } from "@/lib/utils";
  */
 function SheetTable<
   T extends Record<string, unknown> & {
+    // Common properties for each row
     id?: string | number;
     headerKey?: string;
     subRows?: T[];
