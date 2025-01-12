@@ -21,6 +21,9 @@ import {
   ColumnSizingState,
 } from "@tanstack/react-table";
 
+// ** import icons
+import { ChevronDown, ChevronRight } from "lucide-react";
+
 // ** import ui components
 import {
   Table,
@@ -346,10 +349,10 @@ function SheetTable<
               cellContent = (
                 <div className="flex items-center gap-1">
                   <button
-                    className="text-sm"
                     onClick={() => row.toggleExpanded()}
                   >
-                    {isExpanded ? "▼" : "▶"}
+                    {/* Expand/collapse arrow */}
+                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                   </button>
                   {cellContent}
                 </div>
