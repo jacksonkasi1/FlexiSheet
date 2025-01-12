@@ -24,6 +24,7 @@ import React from "react";
  * - Inherits everything from TanStack's ColumnDef<TData, TValue>
  * - Forces existence of optional `accessorKey?: string` and `id?: string`
  * - Adds our optional `validationSchema` property (for column-level Zod).
+ * - Adds optional `className` and `style` properties for custom styling.
  */
 export type ExtendedColumnDef<
   TData extends object,
@@ -32,6 +33,8 @@ export type ExtendedColumnDef<
   id?: string;
   accessorKey?: string;
   validationSchema?: ZodType<any, ZodTypeDef, any>;
+  className?: string | ((row: TData) => string); // Allows static or dynamic class names
+  style?: React.CSSProperties; // style for inline styles
 };
 
 

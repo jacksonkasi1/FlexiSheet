@@ -20,6 +20,7 @@ import {
   // ColumnDef,          // for type if needed
 } from "@tanstack/react-table";
 
+// ** import ui components
 import {
   Table,
   TableBody,
@@ -31,6 +32,7 @@ import {
   TableFooter,
 } from "@/components/ui/table";
 
+// ** import utils
 import {
   ExtendedColumnDef,
   SheetTableProps,
@@ -40,6 +42,9 @@ import {
   handlePaste,
   isRowDisabled,
 } from "./utils";
+
+// ** import lib
+import { cn } from "@/lib/utils";
 
 /**
  * The main SheetTable component, now with optional column sizing support.
@@ -409,11 +414,17 @@ function SheetTable<
                         return (
                           <TableCell
                             key={cell.id}
-                            className={`border
-                              ${isDisabled ? "bg-muted" : ""}
-                              ${errorMsg ? "bg-destructive/25" : ""}
-                            `}
-                            style={style}
+                            className={cn(
+                              "border", // Base class
+                              {
+                                "bg-muted": isDisabled, // Apply bg-muted if the cell is disabled
+                                "bg-destructive/25": errorMsg, // Apply bg-destructive/25 if there's an error
+                              },
+                              typeof colDef.className === "function"
+                              ? colDef.className(rowData) // Dynamic class name based on row data
+                              : colDef.className // Static class name
+                            )}
+                            style={{ ...colDef.style, ...style }} // Combine column style with dynamic styles
                             contentEditable={!isDisabled}
                             suppressContentEditableWarning
                             // Original content capture on focus

@@ -43,7 +43,7 @@ const initialData: RowData[] = [
     materialName: "NC Thinner (Spl)",
     cft: 0.202,
     rate: 93,
-    amount: 19.73,
+    amount: 101.73,
   },
   {
     headerKey: "Spraying",
@@ -64,7 +64,7 @@ const initialData: RowData[] = [
     materialName: "Ultra Nitro Glossy 2",
     cft: 0.045,
     rate: 215,
-    amount: 9.68,
+    amount: 120,
   },
 ];
 
@@ -78,6 +78,7 @@ const columns: ExtendedColumnDef<RowData>[] = [
     accessorKey: "materialName",
     header: "Material Name",
     validationSchema: materialNameSchema,
+    className: "text-center font-bold bg-yellow-100 dark:bg-yellow-800 dark:text-yellow-100", // Static styling
   },
   {
     accessorKey: "cft",
@@ -93,6 +94,7 @@ const columns: ExtendedColumnDef<RowData>[] = [
     accessorKey: "amount",
     header: "Amount",
     validationSchema: amountSchema,
+    className: (row) => (row.amount > 100 ?  "text-green-500" : "text-red-500"), // Dynamic styling based on row data
   },
 ];
 
