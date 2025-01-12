@@ -234,9 +234,6 @@ export default function HomePage() {
         columns={columns}
         data={data}
         onEdit={handleEdit}
-        // e.g. disable editing materialName column
-        disabledColumns={["materialName"]}
-        disabledRows={[2]}
         showHeader={true}
         showSecondHeader={true}
         secondHeaderTitle="Custom Title Example"
