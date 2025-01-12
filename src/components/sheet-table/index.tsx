@@ -49,6 +49,7 @@ import {
 
 // ** import lib
 import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
 
 /**
  * The main SheetTable component, now with optional column sizing support
@@ -330,24 +331,29 @@ function SheetTable<
       <React.Fragment key={rowId}>
         <TableRow className={disabled ? "bg-muted" : ""}>
           {/* Expand/collapse arrow cell */}
-          <TableCell
-            className={cn("border", {
-              "opacity-50 cursor-not-allowed": !hasSubRows, // Disable arrow for rows without sub-rows
-            })}
-          >
-            {hasSubRows && (
-              <button
-                onClick={() => row.toggleExpanded()}
-                disabled={!hasSubRows} // Disable button if no sub-rows
-              >
-                {isExpanded ? (
-                  <ChevronDown size={20} />
-                ) : (
-                  <ChevronRight size={20} />
-                )}
-              </button>
-            )}
-          </TableCell>
+          {hasExpandableRows && (
+            <TableCell
+              className={cn("border !w-[10px]", {
+                "opacity-50 cursor-not-allowed": !hasSubRows, // Disable arrow for rows without sub-rows
+              })}
+
+            >
+              {hasSubRows && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => row.toggleExpanded()}
+                  disabled={!hasSubRows} // Disable button if no sub-rows
+                >
+                  {isExpanded ? (
+                    <ChevronDown size={20} />
+                  ) : (
+                    <ChevronRight size={20} />
+                  )}
+                </Button>
+              )}
+            </TableCell>
+          )}
 
           {row.getVisibleCells().map((cell, cellIndex) => {
             const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
@@ -486,7 +492,10 @@ function SheetTable<
           <TableHeader>
             <TableRow>
               {/* Empty header cell for expand/collapse column */}
-              <TableHead className="border" style={{ width: "40px" }} />
+              {hasExpandableRows && (
+                <TableHead className="border" />
+              )}
+
               {table.getHeaderGroups().map((headerGroup) =>
                 headerGroup.headers.map((header) => {
                   const style: React.CSSProperties = {};
