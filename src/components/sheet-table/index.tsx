@@ -355,7 +355,7 @@ function SheetTable<
             </TableCell>
           )}
 
-          {row.getVisibleCells().map((cell, cellIndex) => {
+          {row.getVisibleCells().map((cell) => {
             const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
             const colKey = getColumnKey(colDef);
 
