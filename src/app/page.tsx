@@ -78,7 +78,7 @@ const columns: ExtendedColumnDef<RowData>[] = [
     accessorKey: "materialName",
     header: "Material Name",
     validationSchema: materialNameSchema,
-    className: "text-center font-bold bg-yellow-100", // Static class name
+    className: "text-center font-bold bg-yellow-100 dark:bg-yellow-800 dark:text-yellow-100", // Static styling
   },
   {
     accessorKey: "cft",
