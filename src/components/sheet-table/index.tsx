@@ -147,6 +147,11 @@ function SheetTable<
    */
   const table = useReactTable<T>(mergedOptions);
 
+  // Check if any rows have sub-rows
+  const hasExpandableRows = table
+    .getRowModel()
+    .rows.some((row) => row.getCanExpand());
+
   /**
    * Finds the TanStack row for a given data row (to get row.id).
    */
@@ -324,6 +329,26 @@ function SheetTable<
     return (
       <React.Fragment key={rowId}>
         <TableRow className={disabled ? "bg-muted" : ""}>
+          {/* Expand/collapse arrow cell */}
+          <TableCell
+            className={cn("border", {
+              "opacity-50 cursor-not-allowed": !hasSubRows, // Disable arrow for rows without sub-rows
+            })}
+          >
+            {hasSubRows && (
+              <button
+                onClick={() => row.toggleExpanded()}
+                disabled={!hasSubRows} // Disable button if no sub-rows
+              >
+                {isExpanded ? (
+                  <ChevronDown size={20} />
+                ) : (
+                  <ChevronRight size={20} />
+                )}
+              </button>
+            )}
+          </TableCell>
+
           {row.getVisibleCells().map((cell, cellIndex) => {
             const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
             const colKey = getColumnKey(colDef);
@@ -338,25 +363,6 @@ function SheetTable<
               if (size) style.width = size + "px";
               if (colDef.minSize) style.minWidth = colDef.minSize + "px";
               if (colDef.maxSize) style.maxWidth = colDef.maxSize + "px";
-            }
-
-            // For the first cell, we place the expand/collapse toggle if subRows exist.
-            let cellContent = flexRender(
-              cell.column.columnDef.cell,
-              cell.getContext(),
-            );
-            if (cellIndex === 0 && hasSubRows) {
-              cellContent = (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => row.toggleExpanded()}
-                  >
-                    {/* Expand/collapse arrow */}
-                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </button>
-                  {cellContent}
-                </div>
-              );
             }
 
             // Optional indentation for subRows
@@ -397,7 +403,7 @@ function SheetTable<
                 onInput={(e) => handleCellInput(e, groupKey, rowData, colDef)}
                 onBlur={(e) => handleCellBlur(e, groupKey, rowData, colDef)}
               >
-                {cellContent}
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </TableCell>
             );
           })}
@@ -422,7 +428,7 @@ function SheetTable<
         {totalRowTitle && (
           <TableRow>
             <TableCell
-              colSpan={columns.length}
+              colSpan={hasExpandableRows ? columns.length + 1 : columns.length}
               className="border text-center font-semibold"
             >
               {totalRowTitle}
@@ -433,33 +439,35 @@ function SheetTable<
         {/* The totals row */}
         {totalRowValues && (
           <TableRow>
-            {columns.map((colDef, index) => {
-              const colKey = getColumnKey(colDef);
-              const cellValue = totalRowValues[colKey];
+            <>
+              {hasExpandableRows && <TableCell className="border" />}
+              {columns.map((colDef, index) => {
+                const colKey = getColumnKey(colDef);
+                const cellValue = totalRowValues[colKey];
 
-              // Provide a default string if totalRowLabel is not passed and this is the first cell
-              const displayValue =
-                cellValue !== undefined
-                  ? cellValue
-                  : index === 0
-                  ? totalRowLabel || ""
-                  : "";
+                // Provide a default string if totalRowLabel is not passed and this is the first cell
+                const displayValue =
+                  cellValue !== undefined
+                    ? cellValue
+                    : index === 0
+                    ? totalRowLabel || ""
+                    : "";
 
-              // Always apply the border to the first cell or any cell that has a displayValue
-              const applyBorder = index === 0 || displayValue !== "";
+                // Always apply the border to the first cell or any cell that has a displayValue
+                const applyBorder = index === 0 || displayValue !== "";
 
-              return (
-                <TableCell
-                  key={`total-${colKey}`}
-                  className={`font-bold ${applyBorder ? "border" : ""}`}
-                >
-                  {displayValue}
-                </TableCell>
-              );
-            })}
+                return (
+                  <TableCell
+                    key={`total-${colKey}`}
+                    className={`font-bold ${applyBorder ? "border" : ""}`}
+                  >
+                    {displayValue}
+                  </TableCell>
+                );
+              })}
+            </>
           </TableRow>
         )}
-
         {/* If a footerElement is provided, render it after the totals row */}
         {footerElement}
       </TableFooter>
@@ -477,6 +485,8 @@ function SheetTable<
         {showHeader && (
           <TableHeader>
             <TableRow>
+              {/* Empty header cell for expand/collapse column */}
+              <TableHead className="border" style={{ width: "40px" }} />
               {table.getHeaderGroups().map((headerGroup) =>
                 headerGroup.headers.map((header) => {
                   const style: React.CSSProperties = {};
@@ -509,7 +519,10 @@ function SheetTable<
         {/* Optional second header */}
         {showSecondHeader && secondHeaderTitle && (
           <TableRow>
-            <TableHead colSpan={columns.length} className="text-center border">
+            <TableHead
+              colSpan={hasExpandableRows ? columns.length + 1 : columns.length}
+              className="text-center border"
+            >
               {secondHeaderTitle}
             </TableHead>
           </TableRow>
@@ -522,7 +535,9 @@ function SheetTable<
               {groupKey !== "ungrouped" && (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length}
+                    colSpan={
+                      hasExpandableRows ? columns.length + 1 : columns.length
+                    }
                     className="font-bold bg-muted-foreground/10 border"
                   >
                     {groupKey}
