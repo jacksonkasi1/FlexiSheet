@@ -36,23 +36,7 @@ const initialData: RowData[] = [
     materialName: "Ultra Nitro Sealer",
     cft: 0.03,
     rate: 164,
-    amount: 5.17,
-    subRows: [
-      {
-        headerKey: "Dipping - 2 times",
-        materialName: "Ultra Nitro Matt",
-        cft: 0.03,
-        rate: 209,
-        amount: 6.27,
-      },
-      {
-        headerKey: "Dipping - 2 times",
-        materialName: "Ultra Nitro Glossy",
-        cft: 0.03,
-        rate: 215,
-        amount: 6.45,
-      }
-    ]
+    amount: 5.17
   },
   {
     headerKey: "Dipping - 2 times",
