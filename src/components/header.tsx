@@ -18,6 +18,7 @@ const Header = () => {
     { name: "Complex", href: "/" },
     { name: "Simple", href: "/normal" },
     { name: "Simple 2", href: "/normal-2" },
+    { name: "Sub Rows", href: "/sub-rows" },
   ];
 
   // Toggle between light and dark themes
