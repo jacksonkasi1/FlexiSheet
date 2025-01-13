@@ -49,7 +49,6 @@ import {
 
 // ** import lib
 import { cn } from "@/lib/utils";
-import { Button } from "../ui/button";
 
 /**
  * The main SheetTable component, now with optional column sizing support
@@ -172,7 +171,7 @@ function SheetTable<
    */
   const handleCellFocus = useCallback(
     (
-      e: React.FocusEvent<HTMLTableCellElement>,
+      e: React.FocusEvent<HTMLTableCellElement | HTMLDivElement>,
       groupKey: string,
       rowData: T,
       colDef: ExtendedColumnDef<T>,
@@ -204,7 +203,7 @@ function SheetTable<
    */
   const handleCellInput = useCallback(
     (
-      e: React.FormEvent<HTMLTableCellElement>,
+      e: React.FormEvent<HTMLTableCellElement | HTMLDivElement>,
       groupKey: string,
       rowData: T,
       colDef: ExtendedColumnDef<T>,
@@ -243,7 +242,7 @@ function SheetTable<
    */
   const handleCellBlur = useCallback(
     (
-      e: React.FocusEvent<HTMLTableCellElement>,
+      e: React.FocusEvent<HTMLTableCellElement | HTMLDivElement>,
       groupKey: string,
       rowData: T,
       colDef: ExtendedColumnDef<T>,
@@ -310,73 +309,92 @@ function SheetTable<
    * A recursive function to render a row (and any sub-rows) in the table body.
    * We respect existing logic for editing, disabling, error highlighting, etc.
    *
-   * @param row - The TanStack row to render
-   * @param groupKey - The group name (for row disabling + error tracking)
-   * @param level - The nesting level (0 = top-level). We can indent sub-rows if desired.
+   * @param row       - The TanStack row to render
+   * @param groupKey  - The group name (for row disabling + error tracking)
+   * @param level     - The nesting level (0 = top-level). We can indent sub-rows if desired.
    */
   const renderRow = (row: TanStackRow<T>, groupKey: string, level = 0) => {
     const rowId = row.id;
     const rowIndex = row.index;
     const rowData = row.original;
+
+    // Determine if this row or its group is disabled
     const disabled = isRowDisabled(disabledRows, groupKey, rowIndex);
 
-    // We'll build a <TableRow> for the "parent" row, then if row is expanded,
-    // we recursively render subRows below it.
-    // Indent the first cell or add a toggle arrow if row has subRows.
-
-    const hasSubRows = row.getCanExpand(); // true if subRows exist
+    // TanStack expansion logic
+    const hasSubRows = row.getCanExpand();
     const isExpanded = row.getIsExpanded();
 
     return (
       <React.Fragment key={rowId}>
         <TableRow className={disabled ? "bg-muted" : ""}>
-          {/* Expand/collapse arrow cell */}
-          {hasExpandableRows && (
-            <TableCell
-              className={cn("border !w-[10px]", {
-                "opacity-50 cursor-not-allowed": !hasSubRows, // Disable arrow for rows without sub-rows
-              })}
-
-            >
-              {hasSubRows && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => row.toggleExpanded()}
-                  disabled={!hasSubRows} // Disable button if no sub-rows
-                >
-                  {isExpanded ? (
-                    <ChevronDown size={20} />
-                  ) : (
-                    <ChevronRight size={20} />
-                  )}
-                </Button>
-              )}
-            </TableCell>
-          )}
-
-          {row.getVisibleCells().map((cell) => {
+          {row.getVisibleCells().map((cell, cellIndex) => {
             const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
             const colKey = getColumnKey(colDef);
-
             const isDisabled = disabled || disabledColumns.includes(colKey);
             const errorMsg = cellErrors[groupKey]?.[rowId]?.[colKey] || null;
 
-            // Column sizing style
+            // Apply sizing logic & indentation
             const style: React.CSSProperties = {};
             if (enableColumnSizing) {
               const size = cell.column.getSize();
-              if (size) style.width = size + "px";
-              if (colDef.minSize) style.minWidth = colDef.minSize + "px";
-              if (colDef.maxSize) style.maxWidth = colDef.maxSize + "px";
+              if (size) style.width = `${size}px`;
+              if (colDef.minSize) style.minWidth = `${colDef.minSize}px`;
+              if (colDef.maxSize) style.maxWidth = `${colDef.maxSize}px`;
+            }
+            if (cellIndex === 0) {
+              style.paddingLeft = `${level * 20}px`;
             }
 
-            // Optional indentation for subRows
-            // e.g. style={{ marginLeft: level * 20 }} or a left padding class
-            // We'll do a small inline style here for demonstration:
-            const indentStyle: React.CSSProperties = {
-              paddingLeft: level * 20,
-            };
+            // Render cell content with customizations for the first cell
+            const rawCellContent = flexRender(
+              cell.column.columnDef.cell,
+              cell.getContext(),
+            );
+
+            const cellContent =
+              hasExpandableRows && cellIndex === 0 ? (
+                <div
+                  className="flex items-center gap-2 w-full h-full"
+                  style={{ outline: "none" }} // Hide the focus outline
+                >
+                  {hasSubRows && (
+                    <button
+                      type="button"
+                      className={cn("flex-shrink-0", {
+                        "opacity-50 cursor-not-allowed": !hasSubRows,
+                      })}
+                      onClick={() => row.toggleExpanded()}
+                      disabled={!hasSubRows}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown size={16} />
+                      ) : (
+                        <ChevronRight size={16} />
+                      )}
+                    </button>
+                  )}
+                  <div
+                    className="flex-grow"
+                    contentEditable={!isDisabled}
+                    suppressContentEditableWarning
+                    style={{ outline: "none" }} // Hide the outline for editing
+                    onFocus={(e) =>
+                      handleCellFocus(e, groupKey, rowData, colDef)
+                    }
+                    onKeyDown={(e) => handleKeyDown(e, colDef)}
+                    onPaste={(e) => handlePaste(e, colDef)}
+                    onInput={(e) =>
+                      handleCellInput(e, groupKey, rowData, colDef)
+                    }
+                    onBlur={(e) => handleCellBlur(e, groupKey, rowData, colDef)}
+                  >
+                    {rawCellContent}
+                  </div>
+                </div>
+              ) : (
+                rawCellContent
+              );
 
             return (
               <TableCell
@@ -391,7 +409,7 @@ function SheetTable<
                     ? colDef.className(rowData)
                     : colDef.className,
                 )}
-                style={{ ...colDef.style, ...style, ...indentStyle }}
+                style={style}
                 contentEditable={!isDisabled}
                 suppressContentEditableWarning
                 onFocus={(e) => handleCellFocus(e, groupKey, rowData, colDef)}
@@ -409,7 +427,7 @@ function SheetTable<
                 onInput={(e) => handleCellInput(e, groupKey, rowData, colDef)}
                 onBlur={(e) => handleCellBlur(e, groupKey, rowData, colDef)}
               >
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                {cellContent}
               </TableCell>
             );
           })}
@@ -434,7 +452,7 @@ function SheetTable<
         {totalRowTitle && (
           <TableRow>
             <TableCell
-              colSpan={hasExpandableRows ? columns.length + 1 : columns.length}
+              colSpan={columns.length}
               className="border text-center font-semibold"
             >
               {totalRowTitle}
@@ -446,7 +464,6 @@ function SheetTable<
         {totalRowValues && (
           <TableRow>
             <>
-              {hasExpandableRows && <TableCell className="border" />}
               {columns.map((colDef, index) => {
                 const colKey = getColumnKey(colDef);
                 const cellValue = totalRowValues[colKey];
@@ -491,11 +508,6 @@ function SheetTable<
         {showHeader && (
           <TableHeader>
             <TableRow>
-              {/* Empty header cell for expand/collapse column */}
-              {hasExpandableRows && (
-                <TableHead className="border" />
-              )}
-
               {table.getHeaderGroups().map((headerGroup) =>
                 headerGroup.headers.map((header) => {
                   const style: React.CSSProperties = {};
@@ -528,10 +540,7 @@ function SheetTable<
         {/* Optional second header */}
         {showSecondHeader && secondHeaderTitle && (
           <TableRow>
-            <TableHead
-              colSpan={hasExpandableRows ? columns.length + 1 : columns.length}
-              className="text-center border"
-            >
+            <TableHead colSpan={columns.length} className="text-center border">
               {secondHeaderTitle}
             </TableHead>
           </TableRow>
@@ -544,9 +553,7 @@ function SheetTable<
               {groupKey !== "ungrouped" && (
                 <TableRow>
                   <TableCell
-                    colSpan={
-                      hasExpandableRows ? columns.length + 1 : columns.length
-                    }
+                    colSpan={columns.length}
                     className="font-bold bg-muted-foreground/10 border"
                   >
                     {groupKey}
