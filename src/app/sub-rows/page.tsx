@@ -113,28 +113,6 @@ const initialData: RowData[] = [
  */
 const columns: ExtendedColumnDef<RowData>[] = [
   {
-    id: "expander", // Unique ID for the expand/collapse column
-    className: "border-0", // Limit the width of this column
-    style: { maxWidth: "10px", paddingLeft: 0 }, // Limit the width of this column
-    maxSize: 10, // Limit the width of this column
-    enableResizing: true, // Disable resizing for this column
-    header: "", // No header for this column
-    cell: ({ row }) =>
-      row.getCanExpand() ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => row.toggleExpanded()}
-        >
-          {row.getIsExpanded() ? (
-            <ChevronDown size={16} />
-          ) : (
-            <ChevronRight size={16} />
-          )}
-        </Button>
-      ) : null,
-  },
-  {
     accessorKey: "materialName",
     header: "Material Name",
     validationSchema: materialNameSchema,
