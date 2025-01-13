@@ -11,7 +11,6 @@ import { ExtendedColumnDef } from "@/components/sheet-table/utils";
 
 // ** import zod schema for row data
 import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
-import { ChevronDown, ChevronRight } from "lucide-react";
 
 const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
 const cftSchema = rowDataZodSchema.shape.cft;                   // optional number >= 0

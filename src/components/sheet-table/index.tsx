@@ -49,7 +49,6 @@ import {
 
 // ** import lib
 import { cn } from "@/lib/utils";
-import { Button } from "../ui/button";
 
 /**
  * The main SheetTable component, now with optional column sizing support
