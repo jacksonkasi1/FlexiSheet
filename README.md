@@ -240,6 +240,7 @@ You can disable specific rows and columns by using the `disabledColumns` and `di
   ```
 
 - **Disable Rows(group)**:
+
   ```tsx
   <SheetTable
     disabledRows={{
@@ -378,6 +379,90 @@ const handleSubmit = () => {
     console.log("Valid data:", data);
   }
 };
+```
+
+### **11. How does the sub-row data structure look, and how can I handle sub-row editing?**
+
+Sub-rows are supported using a `subRows` field within each row object. The `subRows` field is an array of child rows, where each child row can have its own data and even further sub-rows (nested structure).
+
+**Example Sub-row Data Structure:**
+
+```ts
+const dataWithSubRows = [
+  {
+    id: 1,
+    materialName: "Material A",
+    cft: 0.1,
+    rate: 100,
+    amount: 10,
+    subRows: [
+      {
+        id: 1.1,
+        materialName: "Sub-Material A1",
+        cft: 0.05,
+        rate: 50,
+        amount: 5,
+      },
+      {
+        id: 1.2,
+        materialName: "Sub-Material A2",
+        cft: 0.05,
+        rate: 50,
+        amount: 5,
+      },
+    ],
+  },
+  {
+    id: 2,
+    materialName: "Material B",
+    cft: 0.2,
+    rate: 200,
+    amount: 40,
+  },
+];
+```
+
+**How to Handle Sub-row Editing:**
+
+To handle editing for sub-rows, ensure that your `onEdit` callback can traverse the `subRows` array and update the appropriate row.
+
+**Example:**
+
+```tsx
+function updateNestedRow<K extends keyof RowData>(
+  rows: RowData[],
+  rowId: string,
+  colKey: K,
+  newValue: RowData[K],
+): RowData[] {
+  return rows.map((row) => {
+    if (row.id === rowId) {
+      return { ...row, [colKey]: newValue };
+    }
+    if (row.subRows && row.subRows.length > 0) {
+      return {
+        ...row,
+        subRows: updateNestedRow(row.subRows, rowId, colKey, newValue),
+      };
+    }
+    return row;
+  });
+}
+
+export default function HomePage() {
+  const [data, setData] = useState<RowData[]>(initialData);
+
+  const handleEdit = <K extends keyof RowData>(
+    rowId: string,
+    columnId: K,
+    value: RowData[K],
+  ) => {
+    setData((prevData) => {
+      const newRows = updateNestedRow(prevData, rowId, columnId, value);
+      return newRows;
+    });
+  };
+}
 ```
 
 ---
