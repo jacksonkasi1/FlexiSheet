@@ -182,7 +182,7 @@ export function parseAndValidate<T extends object>(
  */
 
 export function handleKeyDown<T extends object>(
-  e: React.KeyboardEvent<HTMLTableCellElement>,
+  e: React.KeyboardEvent<HTMLTableCellElement | HTMLDivElement>,
   colDef: ExtendedColumnDef<T>
 ) {
   if (!colDef.validationSchema) return;
@@ -210,7 +210,7 @@ export function handleKeyDown<T extends object>(
 }
 
 export function handlePaste<T extends object>(
-  e: React.ClipboardEvent<HTMLTableCellElement>,
+  e: React.ClipboardEvent<HTMLTableCellElement | HTMLDivElement>,
   colDef: ExtendedColumnDef<T>
 ) {
   if (!colDef.validationSchema) return;
