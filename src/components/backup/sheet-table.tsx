@@ -117,7 +117,7 @@ function SheetTable<T extends object>({
         console.log(`Row ${rowIndex}, Column "${colKey}" is valid (typing)...`);
       }
     },
-    [disabledColumns, disabledRows]
+    [disabledColumns, disabledRows, getColumnKey, parseAndValidate]
   );
 
   /**
@@ -156,7 +156,7 @@ function SheetTable<T extends object>({
         }
       }
     },
-    [disabledColumns, disabledRows, onEdit]
+    [disabledColumns, disabledRows, onEdit,  getColumnKey, parseAndValidate]
   );
 
   /**

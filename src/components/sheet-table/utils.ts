@@ -91,6 +91,12 @@ export interface SheetTableProps<T extends object> extends FooterProps {
    */
   onEdit?: <K extends keyof T>(rowIndex: string, columnId: K, value: T[K]) => void;
 
+
+  /**
+   * Callback for when a cell is focused.
+   */
+  onCellFocus?: (rowId: string) => void;
+
   /**
    * Columns that are disabled for editing.
    */
@@ -127,6 +133,27 @@ export interface SheetTableProps<T extends object> extends FooterProps {
    * Examples: initialState, columnResizeMode, etc.
    */
   tableOptions?: Partial<TableOptions<T>>;
+
+   /**
+   * Configuration for Add/Remove row icons:
+   * { add?: "left" | "right"; remove?: "left" | "right"; }
+   * Example: { add: "left", remove: "right" }
+   */
+   rowActions?: {
+    add?: "left" | "right";
+    remove?: "left" | "right";
+  };
+
+  /**
+   * Optional function to handle adding a sub-row to a given row (by rowId).
+   */
+  handleAddRowFunction?: (parentRowId: string) => void;
+
+  /**
+   * Optional function to handle removing a given row (by rowId),
+   * including all of its sub-rows.
+   */
+  handleRemoveRowFunction?: (rowId: string) => void;
 }
 
 
