@@ -120,31 +120,6 @@ function updateNestedRow<K extends keyof RowData>(
   });
 }
 
-/**
- * Recursively add a sub-row to a specific row in nested data.
- */
-function addSubRow(rows: RowData[], parentId: string): RowData[] {
-  return rows.map((row) => {
-    if (row.id === parentId) {
-      const newSubRow: RowData = {
-        id: `${parentId}.${(row.subRows?.length || 0) + 1}`,
-        materialName: "New Sub-Row",
-        cft: 0,
-        rate: 0,
-        amount: 0,
-      };
-      return {
-        ...row,
-        subRows: [...(row.subRows || []), newSubRow],
-      };
-    }
-    if (row.subRows) {
-      return { ...row, subRows: addSubRow(row.subRows, parentId) };
-    }
-    return row;
-  });
-}
-
 function addSubRowToRow(rows: RowData[], parentId: string): RowData[] {
   return rows.map((row) => {
     if (row.id === parentId) {
