@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import { nanoid } from "nanoid";
 
 // ** import ui components
 import { Button } from "@/components/ui/button";
 
-// ** import component
+// ** import your reusable table
 import SheetTable from "@/components/sheet-table";
 import { ExtendedColumnDef } from "@/components/sheet-table/utils";
 
@@ -19,32 +20,32 @@ const amountSchema = rowDataZodSchema.shape.amount;             // required numb
 
 /**
  * Initial data for demonstration.
- * All `id` values must be *unique strings* across all nested subRows.
+ * We can still provide some initial IDs manually, but they must be unique.
  */
 const initialData: RowData[] = [
   {
-    id: "1",
+    id: "row-1",
     materialName: "Ultra Nitro Sealer",
     cft: 0.03,
     rate: 164,
     amount: 5.17,
   },
   {
-    id: "2",
+    id: "row-2",
     materialName: "NC Thinner (Spl)",
     cft: 0.202,
     rate: 93,
     amount: 19.73,
     subRows: [
       {
-        id: "2.1",
+        id: "row-2.1",
         materialName: "NC Thinner (Spl) 1",
         cft: 0.203,
         rate: 94,
         amount: 20.0,
       },
       {
-        id: "2.2",
+        id: "row-2.2",
         materialName: "NC Thinner (Spl) 2",
         cft: 0.204,
         rate: 95,
@@ -53,7 +54,7 @@ const initialData: RowData[] = [
     ],
   },
   {
-    id: "3",
+    id: "row-3",
     materialName: "Ultra Nitro Sealer 2",
     cft: 0.072,
     rate: 165,
@@ -98,7 +99,7 @@ const columns: ExtendedColumnDef<RowData>[] = [
 ];
 
 /**
- * Recursively update a row in nested data by matching rowId with strict equality.
+ * Recursively update a row in nested data by matching rowId.
  */
 function updateNestedRow<K extends keyof RowData>(
   rows: RowData[],
@@ -110,7 +111,7 @@ function updateNestedRow<K extends keyof RowData>(
     if (row.id === rowId) {
       return { ...row, [colKey]: newValue };
     }
-    if (row.subRows && row.subRows.length > 0) {
+    if (row.subRows?.length) {
       return {
         ...row,
         subRows: updateNestedRow(row.subRows, rowId, colKey, newValue),
@@ -120,11 +121,15 @@ function updateNestedRow<K extends keyof RowData>(
   });
 }
 
+/**
+ * Recursively add a sub-row under a given parent (by rowId).
+ * Always generate a brand-new ID via nanoid().
+ */
 function addSubRowToRow(rows: RowData[], parentId: string): RowData[] {
   return rows.map((row) => {
     if (row.id === parentId) {
       const newSubRow: RowData = {
-        id: `${parentId}.${(row.subRows?.length ?? 0) + 1}`,
+        id: nanoid(), // <-- Generate a guaranteed unique ID
         materialName: "New SubRow",
         cft: 0,
         rate: 0,
@@ -134,18 +139,21 @@ function addSubRowToRow(rows: RowData[], parentId: string): RowData[] {
         ...row,
         subRows: [...(row.subRows ?? []), newSubRow],
       };
-    } else if (row.subRows) {
+    } else if (row.subRows?.length) {
       return { ...row, subRows: addSubRowToRow(row.subRows, parentId) };
     }
     return row;
   });
 }
 
+/**
+ * Remove the row with the given rowId, recursively if in subRows.
+ */
 function removeRowRecursively(rows: RowData[], rowId: string): RowData[] {
   return rows
-    .filter((row) => row.id !== rowId) // remove the matched row
+    .filter((row) => row.id !== rowId)
     .map((row) => {
-      if (row.subRows) {
+      if (row.subRows?.length) {
         return { ...row, subRows: removeRowRecursively(row.subRows, rowId) };
       }
       return row;
@@ -153,11 +161,15 @@ function removeRowRecursively(rows: RowData[], rowId: string): RowData[] {
 }
 
 /**
- * HomePage - shows how to integrate the SheetTable with dynamic row addition.
+ * HomePage - shows how to integrate the SheetTable with dynamic row addition,
+ * guaranteed unique IDs, sub-row removal, and validation on submit.
  */
 export default function HomePage() {
   const [data, setData] = useState<RowData[]>(initialData);
 
+  /**
+   * onEdit callback: updates local state if the new value is valid.
+   */
   const handleEdit = <K extends keyof RowData>(
     rowId: string,
     columnId: K,
@@ -166,6 +178,9 @@ export default function HomePage() {
     setData((prevData) => updateNestedRow(prevData, rowId, columnId, value));
   };
 
+  /**
+   * Validate entire table on submit.
+   */
   const handleSubmit = () => {
     const validateRows = (rows: RowData[]): boolean => {
       for (const row of rows) {
@@ -174,7 +189,7 @@ export default function HomePage() {
           console.error("Row validation failed:", result.error.issues, row);
           return false;
         }
-        if (row.subRows) {
+        if (row.subRows?.length) {
           if (!validateRows(row.subRows)) return false;
         }
       }
@@ -188,45 +203,56 @@ export default function HomePage() {
     }
   };
 
-  const addRow = () => {
+  /**
+   * Add a brand-new main row (non-sub-row).
+   * Also generate a unique ID for it via nanoid().
+   */
+  const addMainRow = () => {
     const newRow: RowData = {
-      id: `${data.length + 1}`,
+      id: nanoid(), // Unique ID
       materialName: "New Row",
       cft: 0,
       rate: 0,
       amount: 0,
     };
-    setData((prevData) => [...prevData, newRow]);
+    setData((prev) => [...prev, newRow]);
   };
 
-    // Insert new sub-row under parent row
-    const handleAddRowFunction = (parentId: string) => {
-      console.log("Adding sub-row under row:", parentId);
-      setData((old) => addSubRowToRow(old, parentId));
-    };
-  
-    // Remove row (and its subRows) by rowId
-    const handleRemoveRowFunction = (rowId: string) => {
-      console.log("Removing row:", rowId);
-      setData((old) => removeRowRecursively(old, rowId));
-    };
+  /**
+   * Add a sub-row to a row with the given rowId.
+   */
+  const handleAddRowFunction = (parentId: string) => {
+    console.log("Adding sub-row under row:", parentId);
+    setData((old) => addSubRowToRow(old, parentId));
+  };
+
+  /**
+   * Remove row (and subRows) by rowId.
+   */
+  const handleRemoveRowFunction = (rowId: string) => {
+    console.log("Removing row:", rowId);
+    setData((old) => removeRowRecursively(old, rowId));
+  };
 
   return (
     <div style={{ padding: "1rem" }}>
-      <h1>Home Page with Dynamic Rows</h1>
+      <h1>Home Page with Dynamic Rows & Unique IDs</h1>
+
       <div style={{ marginBottom: "1rem" }}>
-        <Button onClick={addRow}>Add Main Row</Button>
+        <Button onClick={addMainRow}>Add Main Row</Button>
       </div>
+
       <SheetTable<RowData>
         columns={columns}
         data={data}
         onEdit={handleEdit}
         enableColumnSizing
+        // Show both icons on the "left"
         rowActions={{ add: "left", remove: "left" }}
         handleAddRowFunction={handleAddRowFunction}
         handleRemoveRowFunction={handleRemoveRowFunction}
-
       />
+
       <div style={{ marginTop: "1rem" }}>
         <Button onClick={handleSubmit} style={{ marginLeft: "1rem" }}>
           Submit
