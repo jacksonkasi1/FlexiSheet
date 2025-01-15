@@ -127,6 +127,11 @@ export interface SheetTableProps<T extends object> extends FooterProps {
    * Examples: initialState, columnResizeMode, etc.
    */
   tableOptions?: Partial<TableOptions<T>>;
+
+  /**
+   * Callback for when a cell is focused.
+   */
+  onCellFocus: (rowId: string) => void;
 }
 
 

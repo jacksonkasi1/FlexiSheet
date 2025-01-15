@@ -57,7 +57,7 @@ import { cn } from "@/lib/utils";
 function SheetTable<
   T extends Record<string, unknown> & {
     // Common properties for each row
-    id?: string | number;
+    id?: string;
     headerKey?: string;
     subRows?: T[];
   },
@@ -80,6 +80,7 @@ function SheetTable<
   // Additional TanStack config
   enableColumnSizing = false,
   tableOptions = {},
+  onCellFocus,
 }: SheetTableProps<T>) {
   /**
    * If column sizing is enabled, we track sizes in state.
@@ -379,9 +380,10 @@ function SheetTable<
                     contentEditable={!isDisabled}
                     suppressContentEditableWarning
                     style={{ outline: "none" }} // Hide the outline for editing
-                    onFocus={(e) =>
-                      handleCellFocus(e, groupKey, rowData, colDef)
-                    }
+                    onFocus={(e) =>{
+                      handleCellFocus(e, groupKey, rowData, colDef);
+                      if (onCellFocus && rowData.id) onCellFocus(rowData?.id); // Notify focus change
+                    }}
                     onKeyDown={(e) => handleKeyDown(e, colDef)}
                     onPaste={(e) => handlePaste(e, colDef)}
                     onInput={(e) =>
@@ -412,7 +414,10 @@ function SheetTable<
                 style={style}
                 contentEditable={!isDisabled}
                 suppressContentEditableWarning
-                onFocus={(e) => handleCellFocus(e, groupKey, rowData, colDef)}
+                onFocus={(e) => {
+                  handleCellFocus(e, groupKey, rowData, colDef);
+                  if (onCellFocus && rowData.id) onCellFocus(rowData?.id); // Notify focus change
+                }}
                 onKeyDown={(e) => {
                   if (
                     (e.ctrlKey || e.metaKey) &&
