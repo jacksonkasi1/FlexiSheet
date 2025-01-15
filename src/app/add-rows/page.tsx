@@ -12,11 +12,15 @@ import { ExtendedColumnDef } from "@/components/sheet-table/utils";
 // ** import zod schema for row data
 import { rowDataZodSchema, RowData } from "@/schemas/row-data-schema";
 
-const materialNameSchema = rowDataZodSchema.shape.materialName;
-const cftSchema = rowDataZodSchema.shape.cft;
-const rateSchema = rowDataZodSchema.shape.rate;
-const amountSchema = rowDataZodSchema.shape.amount;
+const materialNameSchema = rowDataZodSchema.shape.materialName; // required string
+const cftSchema = rowDataZodSchema.shape.cft;                   // optional number >= 0
+const rateSchema = rowDataZodSchema.shape.rate;                 // required number >= 0
+const amountSchema = rowDataZodSchema.shape.amount;             // required number >= 0
 
+/**
+ * Initial data for demonstration.
+ * All `id` values must be *unique strings* across all nested subRows.
+ */
 const initialData: RowData[] = [
   {
     id: "1",
@@ -57,30 +61,68 @@ const initialData: RowData[] = [
   },
 ];
 
+/**
+ * Extended column definitions, each with a validationSchema.
+ */
 const columns: ExtendedColumnDef<RowData>[] = [
-  { accessorKey: "materialName", header: "Material Name", validationSchema: materialNameSchema },
-  { accessorKey: "cft", header: "CFT", validationSchema: cftSchema },
-  { accessorKey: "rate", header: "Rate", validationSchema: rateSchema },
-  { accessorKey: "amount", header: "Amount", validationSchema: amountSchema },
+  {
+    accessorKey: "materialName",
+    header: "Material Name",
+    validationSchema: materialNameSchema,
+    size: 120,
+    minSize: 50,
+    maxSize: 100,
+  },
+  {
+    accessorKey: "cft",
+    header: "CFT",
+    validationSchema: cftSchema,
+    maxSize: 20,
+  },
+  {
+    accessorKey: "rate",
+    header: "Rate",
+    validationSchema: rateSchema,
+    size: 80,
+    minSize: 50,
+    maxSize: 120,
+  },
+  {
+    accessorKey: "amount",
+    header: "Amount",
+    validationSchema: amountSchema,
+    size: 80,
+    minSize: 50,
+    maxSize: 120,
+  },
 ];
 
+/**
+ * Recursively update a row in nested data by matching rowId with strict equality.
+ */
 function updateNestedRow<K extends keyof RowData>(
   rows: RowData[],
   rowId: string,
   colKey: K,
-  newValue: RowData[K]
+  newValue: RowData[K],
 ): RowData[] {
   return rows.map((row) => {
     if (row.id === rowId) {
       return { ...row, [colKey]: newValue };
     }
-    if (row.subRows) {
-      return { ...row, subRows: updateNestedRow(row.subRows, rowId, colKey, newValue) };
+    if (row.subRows && row.subRows.length > 0) {
+      return {
+        ...row,
+        subRows: updateNestedRow(row.subRows, rowId, colKey, newValue),
+      };
     }
     return row;
   });
 }
 
+/**
+ * Recursively add a sub-row to a specific row in nested data.
+ */
 function addSubRow(rows: RowData[], parentId: string): RowData[] {
   return rows.map((row) => {
     if (row.id === parentId) {
@@ -91,7 +133,10 @@ function addSubRow(rows: RowData[], parentId: string): RowData[] {
         rate: 0,
         amount: 0,
       };
-      return { ...row, subRows: [...(row.subRows || []), newSubRow] };
+      return {
+        ...row,
+        subRows: [...(row.subRows || []), newSubRow],
+      };
     }
     if (row.subRows) {
       return { ...row, subRows: addSubRow(row.subRows, parentId) };
@@ -100,14 +145,16 @@ function addSubRow(rows: RowData[], parentId: string): RowData[] {
   });
 }
 
+/**
+ * HomePage - shows how to integrate the SheetTable with dynamic row addition.
+ */
 export default function HomePage() {
   const [data, setData] = useState<RowData[]>(initialData);
-  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
   const handleEdit = <K extends keyof RowData>(
     rowId: string,
     columnId: K,
-    value: RowData[K]
+    value: RowData[K],
   ) => {
     setData((prevData) => updateNestedRow(prevData, rowId, columnId, value));
   };
@@ -145,19 +192,13 @@ export default function HomePage() {
     setData((prevData) => [...prevData, newRow]);
   };
 
-  const addSubRowToRow = () => {
-    if (selectedRowId) {
-      setData((prevData) => addSubRow(prevData, selectedRowId));
-    }
-  };
-
-  const handleRowSelect = (rowId: string) => {
-    setSelectedRowId(rowId);
+  const addSubRowToRow = (parentId: string) => {
+    setData((prevData) => addSubRow(prevData, parentId));
   };
 
   return (
     <div style={{ padding: "1rem" }}>
-      <h1>Dynamic Rows with Sub-Row Context</h1>
+      <h1>Home Page with Dynamic Rows</h1>
       <div style={{ marginBottom: "1rem" }}>
         <Button onClick={addRow}>Add Main Row</Button>
       </div>
@@ -166,16 +207,13 @@ export default function HomePage() {
         data={data}
         onEdit={handleEdit}
         enableColumnSizing
-        onCellFocus={(rowId) => handleRowSelect(rowId)} // Custom cell focus handler
       />
-      {selectedRowId && (
-        <div style={{ marginTop: "1rem" }}>
-          <Button onClick={addSubRowToRow}>Add Sub-Row to Selected Row</Button>
-          <Button onClick={handleSubmit} style={{ marginLeft: "1rem" }}>
-            Submit
-          </Button>
-        </div>
-      )}
+      <div style={{ marginTop: "1rem" }}>
+        <Button onClick={() => addSubRowToRow("2")}>Add Sub-Row to Row 2</Button>
+        <Button onClick={handleSubmit} style={{ marginLeft: "1rem" }}>
+          Submit
+        </Button>
+      </div>
     </div>
   );
 }
