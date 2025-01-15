@@ -59,47 +59,9 @@ const initialData: RowData[] = [
     rate: 165,
     amount: 12.4,
   },
+
   {
     id: "4",
-    materialName: "Ultra Nitro Matt 2",
-    cft: 0.051,
-    rate: 209,
-    amount: 11.19,
-    subRows: [
-      {
-        id: "4.1",
-        materialName: "Ultra Nitro Matt 2 1",
-        cft: 0.052,
-        rate: 210,
-        amount: 11.2,
-        subRows: [
-          {
-            id: "4.1.1",
-            materialName: "Ultra Nitro Matt 2 1 1",
-            cft: 0.053,
-            rate: 211,
-            amount: 11.3,
-          },
-          {
-            id: "4.1.2",
-            materialName: "Ultra Nitro Matt 2 1 2",
-            cft: 0.054,
-            rate: 212,
-            amount: 11.4,
-          },
-        ],
-      },
-      {
-        id: "4.2",
-        materialName: "Ultra Nitro Matt 2 2",
-        cft: 0.055,
-        rate: 213,
-        amount: 11.5,
-      },
-    ],
-  },
-  {
-    id: "5",
     materialName: "Ultra Nitro Glossy 2",
     cft: 0.045,
     rate: 215,
