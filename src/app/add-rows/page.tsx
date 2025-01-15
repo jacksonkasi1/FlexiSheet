@@ -247,7 +247,7 @@ export default function HomePage() {
         data={data}
         onEdit={handleEdit}
         enableColumnSizing
-        rowActions={{ add: "left", remove: "right" }}
+        rowActions={{ add: "left", remove: "left" }}
         handleAddRowFunction={handleAddRowFunction}
         handleRemoveRowFunction={handleRemoveRowFunction}
 

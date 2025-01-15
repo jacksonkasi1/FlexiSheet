@@ -30,7 +30,6 @@ import {
 // ** import icons
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 
-
 // ** import ui components
 import {
   Table,
@@ -62,7 +61,7 @@ import { cn } from "@/lib/utils";
  * sub-row expansions, and hover-based Add/Remove row actions.
  */
 function SheetTable<
-T extends {
+  T extends {
     // Common properties for each row
     id?: string; // Each row should have a unique string/number ID
     headerKey?: string;
