@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * sheet-table/index.tsx
  *
@@ -8,13 +10,17 @@
  *  - TanStack Table column sizing (size, minSize, maxSize)
  *  - Forwarding other TanStack Table configuration via tableOptions
  *  - Sub-rows (nested rows) with expand/collapse
+ * - Hover-based Add/Remove row actions
+ * - Custom styling for cells and columns
+ * - Real-time validation with Zod schemas
+ * - Keyboard shortcuts (Ctrl+Z, Ctrl+V, etc.)
  */
 
 import React, { useState, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
-  getExpandedRowModel, // <-- For expansions
+  getExpandedRowModel,
   flexRender,
   TableOptions,
   Row as TanStackRow,
@@ -22,7 +28,8 @@ import {
 } from "@tanstack/react-table";
 
 // ** import icons
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+
 
 // ** import ui components
 import {
@@ -51,37 +58,43 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * The main SheetTable component, now with optional column sizing support
- * and sub-row expansions.
+ * The main SheetTable component, now with optional column sizing support,
+ * sub-row expansions, and hover-based Add/Remove row actions.
  */
 function SheetTable<
-  T extends Record<string, unknown> & {
+T extends {
     // Common properties for each row
-    id?: string;
+    id?: string; // Each row should have a unique string/number ID
     headerKey?: string;
     subRows?: T[];
   },
->({
-  columns,
-  data,
-  onEdit,
-  disabledColumns = [],
-  disabledRows = [],
-  showHeader = true,
-  showSecondHeader = false,
-  secondHeaderTitle = "",
+>(props: SheetTableProps<T>) {
+  const {
+    columns,
+    data,
+    onEdit,
+    disabledColumns = [],
+    disabledRows = [],
+    showHeader = true,
+    showSecondHeader = false,
+    secondHeaderTitle = "",
 
-  // Footer props
-  totalRowValues,
-  totalRowLabel = "",
-  totalRowTitle,
-  footerElement,
+    // Footer props
+    totalRowValues,
+    totalRowLabel = "",
+    totalRowTitle,
+    footerElement,
 
-  // Additional TanStack config
-  enableColumnSizing = false,
-  tableOptions = {},
-  onCellFocus,
-}: SheetTableProps<T>) {
+    // Additional TanStack config
+    enableColumnSizing = false,
+    tableOptions = {},
+
+    // Add/Remove Dynamic Row Actions
+    rowActions,
+    handleAddRowFunction,
+    handleRemoveRowFunction,
+  } = props;
+
   /**
    * If column sizing is enabled, we track sizes in state.
    * This allows the user to define 'size', 'minSize', 'maxSize' in the column definitions.
@@ -94,7 +107,7 @@ function SheetTable<
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   /**
-   * We still track errors/original content keyed by (groupKey, rowId) for editing.
+   * Track errors/original content keyed by (groupKey, rowId) for editing.
    */
   const [cellErrors, setCellErrors] = useState<
     Record<string, Record<string, Record<string, string | null>>>
@@ -104,20 +117,23 @@ function SheetTable<
   >({});
 
   /**
+   * Track the currently hovered row ID (or null if none).
+   */
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+
+  /**
    * Build the final table options. Merge user-provided tableOptions with ours.
    */
   const mergedOptions: TableOptions<T> = {
     data,
     columns,
-    // Basic row model
-    getRowId: (row) => row.id, // Use the 'id' property as the row ID
+    getRowId: (row) => row.id ?? String(Math.random()), // fallback if row.id is missing
     getCoreRowModel: getCoreRowModel(),
     // Provide subRows if you have them:
-    getSubRows: (row) => (row.subRows ? row.subRows : undefined),
+    getSubRows: (row) => row.subRows ?? undefined,
     // Add expansions
     getExpandedRowModel: getExpandedRowModel(),
     enableExpanding: true,
-
     // External expanded state
     state: {
       // If user also provided tableOptions.state, merge them
@@ -148,16 +164,12 @@ function SheetTable<
    */
   const table = useReactTable<T>(mergedOptions);
 
-  // Check if any rows have sub-rows
-  const hasExpandableRows = table
-    .getRowModel()
-    .rows.some((row) => row.getCanExpand());
-
   /**
-   * Finds the TanStack row for a given data row (to get row.id).
+   * Find a TanStack row by matching rowData.id.
    */
   const findTableRow = useCallback(
     (rowData: T): TanStackRow<T> | undefined => {
+      if (!rowData.id) return undefined;
       // NOTE: Because we have expansions, rowData might be in subRows.
       // We can do a quick flatten search across all rows. We use table.getRowModel().flatRows
       return table
@@ -239,7 +251,7 @@ function SheetTable<
   );
 
   /**
-   * OnBlur: if content changed from the original, parse/validate. If valid => onEdit.
+   * OnBlur: if content changed from the original, parse/validate. If valid => onEdit(rowId, colKey, parsedValue).
    */
   const handleCellBlur = useCallback(
     (
@@ -251,11 +263,12 @@ function SheetTable<
       const tanStackRow = findTableRow(rowData);
       if (!tanStackRow) return;
 
-      const rowId = tanStackRow.id; // <--- Use rowId to
+      const rowId = tanStackRow.id;
+      const rowIndex = tanStackRow.index;
       const colKey = getColumnKey(colDef);
 
       if (
-        isRowDisabled(disabledRows, groupKey, tanStackRow.index) ||
+        isRowDisabled(disabledRows, groupKey, rowIndex) ||
         disabledColumns.includes(colKey)
       ) {
         return;
@@ -265,9 +278,8 @@ function SheetTable<
       const originalValue =
         cellOriginalContent[groupKey]?.[rowId]?.[colKey] ?? "";
 
-      // If nothing changed, do nothing
       if (rawValue === originalValue) {
-        return;
+        return; // No change
       }
 
       const { parsedValue, errorMessage } = parseAndValidate(rawValue, colDef);
@@ -282,9 +294,7 @@ function SheetTable<
       });
 
       if (errorMessage) {
-        console.error(
-          `Group "${groupKey}", Row "${rowId}", Col "${colKey}" final error: ${errorMessage}`,
-        );
+        console.error(`Row "${rowId}", Col "${colKey}" error: ${errorMessage}`);
       } else if (onEdit) {
         // Instead of rowIndex, we pass the row's unique ID from TanStack
         onEdit(rowId, colKey as keyof T, parsedValue as T[keyof T]);
@@ -294,26 +304,68 @@ function SheetTable<
   );
 
   /**
-   * Group data by the `headerKey` field (top-level only).
+   * Group data by `headerKey` (top-level only).
    * Sub-rows are handled by TanStack expansions.
    */
-  const groupedData = data.reduce<Record<string, T[]>>((acc, row) => {
-    const group = row.headerKey || "ungrouped";
-    if (!acc[group]) {
-      acc[group] = [];
-    }
-    acc[group].push(row);
-    return acc;
-  }, {});
+  const groupedData = React.useMemo(() => {
+    const out: Record<string, T[]> = {};
+    data.forEach((row) => {
+      const key = row.headerKey || "ungrouped";
+      if (!out[key]) out[key] = [];
+      out[key].push(row);
+    });
+    return out;
+  }, [data]);
 
   /**
-   * A recursive function to render a row (and any sub-rows) in the table body.
-   * We respect existing logic for editing, disabling, error highlighting, etc.
-   *
-   * @param row       - The TanStack row to render
-   * @param groupKey  - The group name (for row disabling + error tracking)
-   * @param level     - The nesting level (0 = top-level). We can indent sub-rows if desired.
+   * Attempt removing the row with the given rowId via handleRemoveRowFunction.
+   * You can also do the "recursive removal" in your parent with a similar approach to `updateNestedRow`.
    */
+  const removeRow = useCallback(
+    (rowId: string) => {
+      if (handleRemoveRowFunction) {
+        handleRemoveRowFunction(rowId);
+      }
+    },
+    [handleRemoveRowFunction],
+  );
+
+  /**
+   * Attempt adding a sub-row to the row with given rowId (the "parentRowId").
+   */
+  const addSubRow = useCallback(
+    (parentRowId: string) => {
+      if (handleAddRowFunction) {
+        handleAddRowFunction(parentRowId);
+      }
+    },
+    [handleAddRowFunction],
+  );
+
+  /**
+   * Recursively renders a row and its sub-rows, handling:
+   * - Row content and cell editing
+   * - Hover-activated action icons (Add/Remove)
+   * - Sub-row indentation and expansion
+   * - Row-level error tracking and validation
+   * - Disabled state management
+   *
+   * @param row - TanStack row instance containing the data and state
+   * @param groupKey - Identifier for the row's group, used for validation and disabled state
+   * @param level - Nesting depth (0 = top-level), used for sub-row indentation
+   * @returns JSX element containing the row and its sub-rows
+   */
+
+  /**
+   * Show/hide icons based on row hover.
+   * We'll handle row-level onMouseEnter/onMouseLeave in the `renderRow`.
+   */
+
+  /**
+   * Recursively render a row (and sub-rows).
+   * This includes the "Add" & "Remove" icons that appear on hover.
+   */
+
   const renderRow = (row: TanStackRow<T>, groupKey: string, level = 0) => {
     const rowId = row.id;
     const rowIndex = row.index;
@@ -326,9 +378,29 @@ function SheetTable<
     const hasSubRows = row.getCanExpand();
     const isExpanded = row.getIsExpanded();
 
+    // Determine if we show the rowAction icons on hover
+    const showRowActions = hoveredRowId === rowId; // only for hovered row
+
+    // rowActions config
+    const addPos = rowActions?.add ?? null; // "left" | "right" | null
+    const removePos = rowActions?.remove ?? null; // "left" | "right" | null
+
     return (
       <React.Fragment key={rowId}>
-        <TableRow className={disabled ? "bg-muted" : ""}>
+        <TableRow
+          className={disabled ? "bg-muted" : ""}
+          // On mouse enter/leave, set hovered row
+          onMouseEnter={() => setHoveredRowId(rowId)}
+          onMouseLeave={() =>
+            setHoveredRowId((prev) => (prev === rowId ? null : prev))
+          }
+        >
+          {/**
+           * If the "Add" or "Remove" icons are on the left, we can render an extra <TableCell> for them,
+           * or overlay them.
+           * We'll do an approach that overlays them. For clarity, let's keep it simple:
+           * we'll just overlay or absolutely position them, or place them in the first cell.
+           */}
           {row.getVisibleCells().map((cell, cellIndex) => {
             const colDef = cell.column.columnDef as ExtendedColumnDef<T>;
             const colKey = getColumnKey(colDef);
@@ -353,8 +425,11 @@ function SheetTable<
               cell.getContext(),
             );
 
-            const cellContent =
-              hasExpandableRows && cellIndex === 0 ? (
+            let cellContent: React.ReactNode = rawCellContent;
+
+            // If first cell, show expand arrow if subRows exist
+            if (cellIndex === 0) {
+              cellContent = (
                 <div
                   className="flex items-center gap-2 w-full h-full"
                   style={{ outline: "none" }} // Hide the focus outline
@@ -380,11 +455,18 @@ function SheetTable<
                     contentEditable={!isDisabled}
                     suppressContentEditableWarning
                     style={{ outline: "none" }} // Hide the outline for editing
-                    onFocus={(e) =>{
-                      handleCellFocus(e, groupKey, rowData, colDef);
-                      if (onCellFocus && rowData.id) onCellFocus(rowData?.id); // Notify focus change
+                    onFocus={(e) =>
+                      handleCellFocus(e, groupKey, rowData, colDef)
+                    }
+                    onKeyDown={(e) => {
+                      if (
+                        (e.ctrlKey || e.metaKey) &&
+                        ["a", "c", "x", "z", "v"].includes(e.key.toLowerCase())
+                      ) {
+                        return;
+                      }
+                      handleKeyDown(e, colDef);
                     }}
-                    onKeyDown={(e) => handleKeyDown(e, colDef)}
                     onPaste={(e) => handlePaste(e, colDef)}
                     onInput={(e) =>
                       handleCellInput(e, groupKey, rowData, colDef)
@@ -394,15 +476,14 @@ function SheetTable<
                     {rawCellContent}
                   </div>
                 </div>
-              ) : (
-                rawCellContent
               );
+            }
 
             return (
               <TableCell
                 key={cell.id}
                 className={cn(
-                  "border",
+                  "border relative", // 'relative' for absolute icons if you prefer
                   {
                     "bg-muted": isDisabled,
                     "bg-destructive/25": errorMsg,
@@ -412,33 +493,107 @@ function SheetTable<
                     : colDef.className,
                 )}
                 style={style}
-                contentEditable={!isDisabled}
+                contentEditable={cellIndex === 0 ? false : !isDisabled}
                 suppressContentEditableWarning
                 onFocus={(e) => {
-                  handleCellFocus(e, groupKey, rowData, colDef);
-                  if (onCellFocus && rowData.id) onCellFocus(rowData?.id); // Notify focus change
+                  if (cellIndex > 0 && !isDisabled) {
+                    handleCellFocus(e, groupKey, rowData, colDef);
+                  }
                 }}
                 onKeyDown={(e) => {
-                  if (
-                    (e.ctrlKey || e.metaKey) &&
-                    // Let user do Ctrl+A, C, X, Z, V, etc.
-                    ["a", "c", "x", "z", "v"].includes(e.key.toLowerCase())
-                  ) {
-                    return; // do not block copy/paste
+                  if (cellIndex > 0 && !isDisabled) {
+                    if (
+                      (e.ctrlKey || e.metaKey) &&
+                      // Let user do Ctrl+A, C, X, Z, V, etc.
+                      ["a", "c", "x", "z", "v"].includes(e.key.toLowerCase())
+                    ) {
+                      return; // do not block copy/paste
+                    }
+                    handleKeyDown(e, colDef);
                   }
-                  handleKeyDown(e, colDef);
                 }}
-                onPaste={(e) => handlePaste(e, colDef)}
-                onInput={(e) => handleCellInput(e, groupKey, rowData, colDef)}
-                onBlur={(e) => handleCellBlur(e, groupKey, rowData, colDef)}
+                onPaste={(e) => {
+                  if (cellIndex > 0 && !isDisabled) {
+                    handlePaste(e, colDef);
+                  }
+                }}
+                onInput={(e) => {
+                  if (cellIndex > 0 && !isDisabled) {
+                    handleCellInput(e, groupKey, rowData, colDef);
+                  }
+                }}
+                onBlur={(e) => {
+                  if (cellIndex > 0 && !isDisabled) {
+                    handleCellBlur(e, groupKey, rowData, colDef);
+                  }
+                }}
               >
+                {/** The actual content */}
                 {cellContent}
+
+                {/**
+                 * Optionally show the "Add" or "Remove" icons if:
+                 * - This row is hovered (showRowActions)
+                 * - The positions (addPos/removePos) allow it (e.g. "left" or "right")
+                 * - We are in the correct cellIndex if we want them in the leftmost or rightmost cell, etc.
+                 *
+                 * We can place them absolutely, or inline.
+                 * For simplicity, let's do a small example: always put them in the first cell if "left",
+                 * or the last cell if "right".
+                 */}
+                {showRowActions &&
+                  cellIndex === 0 &&
+                  addPos === "left" &&
+                  handleAddRowFunction && (
+                    <button
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2"
+                      onClick={() => addSubRow(rowId)}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  )}
+
+                {showRowActions &&
+                  cellIndex === 0 &&
+                  removePos === "left" &&
+                  handleRemoveRowFunction && (
+                    <button
+                      className="absolute left-8 top-1/2 transform -translate-y-1/2"
+                      onClick={() => removeRow(rowId)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+
+                {showRowActions &&
+                  cellIndex === row.getVisibleCells().length - 1 &&
+                  addPos === "right" &&
+                  handleAddRowFunction && (
+                    <button
+                      className="absolute right-8 top-1/2 transform -translate-y-1/2"
+                      onClick={() => addSubRow(rowId)}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  )}
+
+                {showRowActions &&
+                  cellIndex === row.getVisibleCells().length - 1 &&
+                  removePos === "right" &&
+                  handleRemoveRowFunction && (
+                    <button
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                      onClick={() => removeRow(rowId)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
               </TableCell>
             );
           })}
         </TableRow>
 
-        {/* If expanded, render each subRow recursively */}
+        {/* If expanded, render each subRows recursively */}
         {isExpanded &&
           row.subRows.map((subRow) => renderRow(subRow, groupKey, level + 1))}
       </React.Fragment>
@@ -446,7 +601,7 @@ function SheetTable<
   };
 
   /**
-   * Renders optional footer content (rows) inside a <TableFooter>.
+   * Renders optional footer (totals row + optional custom element) inside a <TableFooter>.
    */
   function renderFooter() {
     if (!totalRowValues && !footerElement) return null;
@@ -468,34 +623,33 @@ function SheetTable<
         {/* The totals row */}
         {totalRowValues && (
           <TableRow>
-            <>
-              {columns.map((colDef, index) => {
-                const colKey = getColumnKey(colDef);
-                const cellValue = totalRowValues[colKey];
+            {columns.map((colDef, index) => {
+              const colKey = getColumnKey(colDef);
+              const cellValue = totalRowValues[colKey];
 
-                // Provide a default string if totalRowLabel is not passed and this is the first cell
-                const displayValue =
-                  cellValue !== undefined
-                    ? cellValue
-                    : index === 0
-                    ? totalRowLabel || ""
-                    : "";
+              // Provide a default string if totalRowLabel is not passed and this is the first cell
+              const displayValue =
+                cellValue !== undefined
+                  ? cellValue
+                  : index === 0
+                  ? totalRowLabel || ""
+                  : "";
 
-                // Always apply the border to the first cell or any cell that has a displayValue
-                const applyBorder = index === 0 || displayValue !== "";
+              // Always apply the border to the first cell or any cell that has a displayValue
+              const applyBorder = index === 0 || displayValue !== "";
 
-                return (
-                  <TableCell
-                    key={`total-${colKey}`}
-                    className={`font-bold ${applyBorder ? "border" : ""}`}
-                  >
-                    {displayValue}
-                  </TableCell>
-                );
-              })}
-            </>
+              return (
+                <TableCell
+                  key={`total-${colKey}`}
+                  className={`font-bold ${applyBorder ? "border" : ""}`}
+                >
+                  {displayValue}
+                </TableCell>
+              );
+            })}
           </TableRow>
         )}
+
         {/* If a footerElement is provided, render it after the totals row */}
         {footerElement}
       </TableFooter>
@@ -508,7 +662,6 @@ function SheetTable<
         <TableCaption>
           Dynamic, editable data table with grouping & nested sub-rows.
         </TableCaption>
-
         {/* Primary header */}
         {showHeader && (
           <TableHeader>
@@ -519,9 +672,9 @@ function SheetTable<
                   if (enableColumnSizing) {
                     const col = header.column.columnDef;
                     const size = header.getSize();
-                    if (size) style.width = size + "px";
-                    if (col.minSize) style.minWidth = col.minSize + "px";
-                    if (col.maxSize) style.maxWidth = col.maxSize + "px";
+                    if (size) style.width = `${size}px`;
+                    if (col.minSize) style.minWidth = `${col.minSize}px`;
+                    if (col.maxSize) style.maxWidth = `${col.maxSize}px`;
                   }
 
                   return (
@@ -541,8 +694,7 @@ function SheetTable<
             </TableRow>
           </TableHeader>
         )}
-
-        {/* Optional second header */}
+        {/* Optional second header */}{" "}
         {showSecondHeader && secondHeaderTitle && (
           <TableRow>
             <TableHead colSpan={columns.length} className="text-center border">
@@ -550,7 +702,6 @@ function SheetTable<
             </TableHead>
           </TableRow>
         )}
-
         <TableBody>
           {Object.entries(groupedData).map(([groupKey, topRows]) => (
             <React.Fragment key={groupKey}>
@@ -565,9 +716,8 @@ function SheetTable<
                   </TableCell>
                 </TableRow>
               )}
-
-              {/* For each top-level row in this group, find the actual row in table. 
-                  Then recursively render it with renderRow() */}
+              {/* For each top-level row in this group, find the actual row in table.
+                  Then recursively render it with renderRow() */}{" "}
               {topRows.map((rowData) => {
                 const row = table
                   .getRowModel()
@@ -579,7 +729,6 @@ function SheetTable<
             </React.Fragment>
           ))}
         </TableBody>
-
         {/* Render footer (totals row + custom footer) */}
         {renderFooter()}
       </Table>
