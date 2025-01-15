@@ -145,6 +145,38 @@ function addSubRow(rows: RowData[], parentId: string): RowData[] {
   });
 }
 
+function addSubRowToRow(rows: RowData[], parentId: string): RowData[] {
+  return rows.map((row) => {
+    if (row.id === parentId) {
+      const newSubRow: RowData = {
+        id: `${parentId}.${(row.subRows?.length ?? 0) + 1}`,
+        materialName: "New SubRow",
+        cft: 0,
+        rate: 0,
+        amount: 0,
+      };
+      return {
+        ...row,
+        subRows: [...(row.subRows ?? []), newSubRow],
+      };
+    } else if (row.subRows) {
+      return { ...row, subRows: addSubRowToRow(row.subRows, parentId) };
+    }
+    return row;
+  });
+}
+
+function removeRowRecursively(rows: RowData[], rowId: string): RowData[] {
+  return rows
+    .filter((row) => row.id !== rowId) // remove the matched row
+    .map((row) => {
+      if (row.subRows) {
+        return { ...row, subRows: removeRowRecursively(row.subRows, rowId) };
+      }
+      return row;
+    });
+}
+
 /**
  * HomePage - shows how to integrate the SheetTable with dynamic row addition.
  */
@@ -192,9 +224,17 @@ export default function HomePage() {
     setData((prevData) => [...prevData, newRow]);
   };
 
-  const addSubRowToRow = (parentId: string) => {
-    setData((prevData) => addSubRow(prevData, parentId));
-  };
+    // Insert new sub-row under parent row
+    const handleAddRowFunction = (parentId: string) => {
+      console.log("Adding sub-row under row:", parentId);
+      setData((old) => addSubRowToRow(old, parentId));
+    };
+  
+    // Remove row (and its subRows) by rowId
+    const handleRemoveRowFunction = (rowId: string) => {
+      console.log("Removing row:", rowId);
+      setData((old) => removeRowRecursively(old, rowId));
+    };
 
   return (
     <div style={{ padding: "1rem" }}>
@@ -207,9 +247,12 @@ export default function HomePage() {
         data={data}
         onEdit={handleEdit}
         enableColumnSizing
+        rowActions={{ add: "left", remove: "right" }}
+        handleAddRowFunction={handleAddRowFunction}
+        handleRemoveRowFunction={handleRemoveRowFunction}
+
       />
       <div style={{ marginTop: "1rem" }}>
-        <Button onClick={() => addSubRowToRow("2")}>Add Sub-Row to Row 2</Button>
         <Button onClick={handleSubmit} style={{ marginLeft: "1rem" }}>
           Submit
         </Button>
