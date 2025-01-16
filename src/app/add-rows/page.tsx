@@ -248,7 +248,7 @@ export default function HomePage() {
         onEdit={handleEdit}
         enableColumnSizing
         // Show both icons on the "left"
-        rowActions={{ add: "left", remove: "left" }}
+        rowActions={{ add: "right", remove: "left" }}
         handleAddRowFunction={handleAddRowFunction}
         handleRemoveRowFunction={handleRemoveRowFunction}
       />
