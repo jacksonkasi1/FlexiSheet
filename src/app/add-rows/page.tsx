@@ -24,6 +24,23 @@ const amountSchema = rowDataZodSchema.shape.amount;             // required numb
  */
 const initialData: RowData[] = [
   {
+    headerKey: "Group 1",
+    id: "1",
+    materialName: "Ultra Nitro Sealer",
+    cft: 0.03,
+    rate: 164,
+    amount: 5.17
+  },
+  {
+    headerKey: "Group 1",
+    id: "2",
+    materialName: "NC Thinner (Spl)",
+    cft: 0.202,
+    rate: 93,
+    amount: 101.73,
+  },
+  {
+    headerKey: "Group 2",
     id: "row-1",
     materialName: "Ultra Nitro Sealer",
     cft: 0.03,
@@ -31,6 +48,7 @@ const initialData: RowData[] = [
     amount: 5.17,
   },
   {
+    headerKey: "Group 2",
     id: "row-2",
     materialName: "NC Thinner (Spl)",
     cft: 0.202,
@@ -248,9 +266,17 @@ export default function HomePage() {
         onEdit={handleEdit}
         enableColumnSizing
         // Show both icons on the "left"
-        rowActions={{ add: "left", remove: "left" }}
+        rowActions={{ add: "left", remove: "right" }}
         handleAddRowFunction={handleAddRowFunction}
         handleRemoveRowFunction={handleRemoveRowFunction}
+        secondHeaderTitle="Custom Title Example"
+        totalRowTitle="Total"
+        totalRowValues={{
+          materialName: "Total",
+          cft: data.reduce((sum, row) => sum + (row.cft || 0), 0),
+          rate: data.reduce((sum, row) => sum + row.rate, 0),
+          amount: data.reduce((sum, row) => sum + row.amount, 0),
+        }}
       />
 
       <div style={{ marginTop: "1rem" }}>

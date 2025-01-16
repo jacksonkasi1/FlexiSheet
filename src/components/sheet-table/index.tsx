@@ -341,6 +341,17 @@ function SheetTable<
     [handleAddRowFunction],
   );
 
+  // rowActions config
+  const addPos = rowActions?.add ?? null; // "left" | "right" | null
+  const removePos = rowActions?.remove ?? null; // "left" | "right" | null
+
+  const rowActionCellStyle: React.CSSProperties = {
+    width: "5px",
+    maxWidth: "5px",
+    outline: "none",
+  };
+  const rowActionCellClassName = "p-0 border-none bg-transparent";
+
   /**
    * Recursively renders a row and its sub-rows, handling:
    * - Row content and cell editing
@@ -353,16 +364,6 @@ function SheetTable<
    * @param groupKey - Identifier for the row's group, used for validation and disabled state
    * @param level - Nesting depth (0 = top-level), used for sub-row indentation
    * @returns JSX element containing the row and its sub-rows
-   */
-
-  /**
-   * Show/hide icons based on row hover.
-   * We'll handle row-level onMouseEnter/onMouseLeave in the `renderRow`.
-   */
-
-  /**
-   * Recursively render a row (and sub-rows).
-   * This includes the "Add" & "Remove" icons that appear on hover.
    */
 
   const renderRow = (row: TanStackRow<T>, groupKey: string, level = 0) => {
@@ -380,20 +381,51 @@ function SheetTable<
     // Determine if we show the rowAction icons on hover
     const showRowActions = hoveredRowId === rowId; // only for hovered row
 
-    // rowActions config
-    const addPos = rowActions?.add ?? null; // "left" | "right" | null
-    const removePos = rowActions?.remove ?? null; // "left" | "right" | null
-
     return (
       <React.Fragment key={rowId}>
         <TableRow
-          className={disabled ? "bg-muted" : ""}
+          className={cn(
+            "border-none", // it's will remove border for icons cells
+            disabled ? "bg-muted" : "",
+          )}
           // On mouse enter/leave, set hovered row
           onMouseEnter={() => setHoveredRowId(rowId)}
           onMouseLeave={() =>
             setHoveredRowId((prev) => (prev === rowId ? null : prev))
           }
         >
+          {/* Left icon cells */}
+          {addPos === "left" && handleAddRowFunction && (
+            <TableCell
+              className={cn(rowActionCellClassName)}
+              style={rowActionCellStyle}
+            >
+              {showRowActions && (
+                <button
+                  className="flex items-center justify-center w-full"
+                  onClick={() => addSubRow(rowId)}
+                >
+                  <Plus size={16} />
+                </button>
+              )}
+            </TableCell>
+          )}
+          {removePos === "left" && handleRemoveRowFunction && (
+            <TableCell
+              className={cn(rowActionCellClassName)}
+              style={rowActionCellStyle}
+            >
+              {showRowActions && (
+                <button
+                  className="flex items-center justify-center w-full"
+                  onClick={() => removeRow(rowId)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </TableCell>
+          )}
+
           {/**
            * If the "Add" or "Remove" icons are on the left, we can render an extra <TableCell> for them,
            * or overlay them.
@@ -529,67 +561,42 @@ function SheetTable<
               >
                 {/** The actual content */}
                 {cellContent}
-
-                {/**
-                 * Optionally show the "Add" or "Remove" icons if:
-                 * - This row is hovered (showRowActions)
-                 * - The positions (addPos/removePos) allow it (e.g. "left" or "right")
-                 * - We are in the correct cellIndex if we want them in the leftmost or rightmost cell, etc.
-                 *
-                 * We can place them absolutely, or inline.
-                 * For simplicity, let's do a small example: always put them in the first cell if "left",
-                 * or the last cell if "right".
-                 */}
-                {showRowActions &&
-                  cellIndex === 0 &&
-                  addPos === "left" &&
-                  handleAddRowFunction && (
-                    <button
-                      className="absolute left-2 top-1/2 transform -translate-y-1/2"
-                      onClick={() => addSubRow(rowId)}
-                    >
-                      <Plus size={16} />
-                    </button>
-                  )}
-
-                {showRowActions &&
-                  cellIndex === 0 &&
-                  removePos === "left" &&
-                  handleRemoveRowFunction && (
-                    <button
-                      className="absolute left-8 top-1/2 transform -translate-y-1/2"
-                      onClick={() => removeRow(rowId)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-
-                {showRowActions &&
-                  cellIndex === row.getVisibleCells().length - 1 &&
-                  addPos === "right" &&
-                  handleAddRowFunction && (
-                    <button
-                      className="absolute right-8 top-1/2 transform -translate-y-1/2"
-                      onClick={() => addSubRow(rowId)}
-                    >
-                      <Plus size={16} />
-                    </button>
-                  )}
-
-                {showRowActions &&
-                  cellIndex === row.getVisibleCells().length - 1 &&
-                  removePos === "right" &&
-                  handleRemoveRowFunction && (
-                    <button
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2"
-                      onClick={() => removeRow(rowId)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
               </TableCell>
             );
           })}
+
+          {/* Right icon cells */}
+          {addPos === "right" && handleAddRowFunction && (
+            <TableCell
+              className={cn(rowActionCellClassName)}
+              style={rowActionCellStyle}
+            >
+              {showRowActions && (
+                <button
+                  className="flex items-center justify-center w-full"
+                  onClick={() => addSubRow(rowId)}
+                >
+                  <Plus size={16} />
+                </button>
+              )}
+            </TableCell>
+          )}
+
+          {removePos === "right" && handleRemoveRowFunction && (
+            <TableCell
+              className={cn(rowActionCellClassName)}
+              style={rowActionCellStyle}
+            >
+              {showRowActions && (
+                <button
+                  className="flex items-center justify-center w-full"
+                  onClick={() => removeRow(rowId)}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </TableCell>
+          )}
         </TableRow>
 
         {/* If expanded, render each subRows recursively */}
@@ -606,22 +613,67 @@ function SheetTable<
     if (!totalRowValues && !footerElement) return null;
 
     return (
-      <TableFooter>
+      <TableFooter className="border-none">
         {/* If there's a totalRowTitle, show it in a single row */}
         {totalRowTitle && (
-          <TableRow>
+          <TableRow className="border-none">
+            {/* Right icon - empty cells  */}
+            {addPos === "left" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
+            {removePos === "left" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
             <TableCell
               colSpan={columns.length}
               className="border text-center font-semibold"
             >
               {totalRowTitle}
             </TableCell>
+
+            {/* Left icon - empty cells  */}
+            {addPos === "right" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
+            {removePos === "right" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
           </TableRow>
         )}
 
         {/* The totals row */}
         {totalRowValues && (
-          <TableRow>
+          <TableRow className="border-none">
+            {/*  Right icon - empty cells  */}
+            {addPos === "left" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
+            {removePos === "left" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
             {columns.map((colDef, index) => {
               const colKey = getColumnKey(colDef);
               const cellValue = totalRowValues[colKey];
@@ -664,7 +716,22 @@ function SheetTable<
         {/* Primary header */}
         {showHeader && (
           <TableHeader>
-            <TableRow>
+            <TableRow className="border-none">
+              {/* Right icon cells empty headers */}
+              {addPos === "left" && (
+                <TableHead
+                  className={cn(rowActionCellClassName)}
+                  style={rowActionCellStyle}
+                />
+              )}
+
+              {removePos === "left" && (
+                <TableHead
+                  className={cn(rowActionCellClassName)}
+                  style={rowActionCellStyle}
+                />
+              )}
+
               {table.getHeaderGroups().map((headerGroup) =>
                 headerGroup.headers.map((header) => {
                   const style: React.CSSProperties = {};
@@ -690,15 +757,63 @@ function SheetTable<
                   );
                 }),
               )}
+
+              {/* Left icon cells empty headers */}
+
+              {addPos === "right" && (
+                <TableHead
+                  className={cn(rowActionCellClassName)}
+                  style={rowActionCellStyle}
+                />
+              )}
+
+              {removePos === "right" && (
+                <TableHead
+                  className={cn(rowActionCellClassName)}
+                  style={rowActionCellStyle}
+                />
+              )}
             </TableRow>
           </TableHeader>
         )}
         {/* Optional second header */}{" "}
         {showSecondHeader && secondHeaderTitle && (
           <TableRow>
+
+            {/* Right icon cells empty headers */}
+            {addPos === "left" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
+            {removePos === "left" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
             <TableHead colSpan={columns.length} className="text-center border">
               {secondHeaderTitle}
             </TableHead>
+
+            {/* Left icon cells empty headers */}
+            {addPos === "right" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
+            {removePos === "right" && (
+              <TableCell
+                className={cn(rowActionCellClassName)}
+                style={rowActionCellStyle}
+              />
+            )}
+
           </TableRow>
         )}
         <TableBody>
@@ -706,13 +821,45 @@ function SheetTable<
             <React.Fragment key={groupKey}>
               {/* Group label row (if not ungrouped) */}
               {groupKey !== "ungrouped" && (
-                <TableRow>
+                <TableRow className="border-none">
+
+                {/* Right icon cells empty headers */}
+                {addPos === "left" && (
+                  <TableCell
+                    className={cn(rowActionCellClassName)}
+                    style={rowActionCellStyle}
+                  />
+                )}
+
+                {removePos === "left" && (
+                  <TableCell
+                    className={cn(rowActionCellClassName)}
+                    style={rowActionCellStyle}
+                    />
+                )}
+
                   <TableCell
                     colSpan={columns.length}
                     className="font-bold bg-muted-foreground/10 border"
                   >
                     {groupKey}
                   </TableCell>
+
+                  {/* Left icon cells empty headers */}
+                  {addPos === "right" && (
+                    <TableCell
+                      className={cn(rowActionCellClassName)}
+                      style={rowActionCellStyle}
+                    />
+                  )}
+
+                  {removePos === "right" && (
+                    <TableCell
+                      className={cn(rowActionCellClassName)}
+                      style={rowActionCellStyle}
+                    />
+                  )}
+
                 </TableRow>
               )}
               {/* For each top-level row in this group, find the actual row in table.
